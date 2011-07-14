@@ -323,6 +323,17 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         scan.setFilter(scanFilter);
     }
 
+  /**
+   * Returns the ColumnInfo list for so external objects can inspect it. This
+   * is available for unit testing. Ideally, the unit tests and the main source
+   * would each mirror the same package structure and this method could be package
+   * private.
+   * @return
+   */
+    public List<ColumnInfo> getColumnInfoList() {
+      return columnInfo_;
+    }
+
     @Override
     public Tuple getNext() throws IOException {
         try {
@@ -749,7 +760,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      * Map being added to the tuple, while the last results in a scalar. The 3rd
      * form results in a prefix-filtered Map.
      */
-    private class ColumnInfo {
+    public class ColumnInfo {
 
         final String originalColumnName;  // always set
         final byte[] columnFamily; // always set
