@@ -21,6 +21,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -142,6 +144,8 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     private final static Options validOptions_ = new Options();
     private final static CommandLineParser parser_ = new GnuParser();
     private boolean loadRowKey_;
+    private String delimiter_;
+    private boolean ignoreWhitespace_;
     private final long limit_;
     private final int caching_;
     private final boolean noWAL_;
@@ -166,6 +170,8 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         validOptions_.addOption("lte", true, "Records must be less than or equal to this value");
         validOptions_.addOption("caching", true, "Number of rows scanners should cache");
         validOptions_.addOption("limit", true, "Per-region limit");
+        validOptions_.addOption("delim", true, "Column delimiter");
+        validOptions_.addOption("ignoreWhitespace", true, "Ignore spaces when parsing columns");
         validOptions_.addOption("caster", true, "Caster to use for converting values. A class name, " +
                 "HBaseBinaryConverter, or Utf8StorageConverter. For storage, casters must implement LoadStoreCaster.");
         validOptions_.addOption("noWAL", false, "Sets the write ahead to false for faster loading. To be used with extreme caution since this could result in data loss (see http://hbase.apache.org/book.html#perf.hbase.client.putwal).");
@@ -176,10 +182,10 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      * provided columns.
      * 
      * @param columnList
-     *        columnlist that is a presented string delimited by space. To
-     *        retreive all columns in a column family <code>Foo</code>, specify
-     *        a column as either <code>Foo:</code> or <code>Foo:*</code>. To fetch
-     *        only columns in the CF that start with <I>bar</I>, specify
+     *        columnlist that is a presented string delimited by space and/or
+     *        commas. To retreive all columns in a column family <code>Foo</code>,
+     *        specify a column as either <code>Foo:</code> or <code>Foo:*</code>.
+     *        To fetch only columns in the CF that start with <I>bar</I>, specify
      *        <code>Foo:bar*</code>. The resulting tuple will always be the size
      *        of the number of tokens in <code>columnList</code>. Items in the
      *        tuple will be scalar values when a full column descriptor is
@@ -203,6 +209,8 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      * <li>-gte=minKeyVal
      * <li>-lte=maxKeyVal
      * <li>-limit=numRowsPerRegion max number of rows to retrieve per region
+     * <li>-delim=char delimiter to use when parsing column names (default is space or comma)
+     * <li>-ignoreWhitespace=(true|false) ignore spaces when parsing column names (default true)
      * <li>-caching=numRows  number of rows to cache (faster scans, more memory).
      * <li>-noWAL=(true|false) Sets the write ahead to false for faster loading.
      * To be used with extreme caution, since this could result in data loss
@@ -213,17 +221,49 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      */
     public HBaseStorage(String columnList, String optString) throws ParseException, IOException {
         populateValidOptions();
-        String[] colNames = columnList.split(" ");
         String[] optsArr = optString.split(" ");
         try {
             configuredOptions_ = parser_.parse(validOptions_, optsArr);
         } catch (ParseException e) {
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp( "[-loadKey] [-gt] [-gte] [-lt] [-lte] [-columnPrefix] [-caching] [-caster] [-noWAL] [-limit]", validOptions_ );
+            formatter.printHelp( "[-loadKey] [-gt] [-gte] [-lt] [-lte] [-columnPrefix] [-caching] [-caster] [-noWAL] [-limit] [-delim] [-ignoreWhitespace]", validOptions_ );
             throw e;
         }
 
-        loadRowKey_ = configuredOptions_.hasOption("loadKey");  
+        loadRowKey_ = configuredOptions_.hasOption("loadKey");
+
+        delimiter_ = ",";
+        if (configuredOptions_.getOptionValue("delim") != null) {
+          delimiter_ = configuredOptions_.getOptionValue("delim");
+        }
+
+        ignoreWhitespace_ = true;
+        if (configuredOptions_.hasOption("ignoreWhitespace")) {
+          String value = configuredOptions_.getOptionValue("ignoreWhitespace");
+          if (value == null || !value.equalsIgnoreCase("true")) {
+            ignoreWhitespace_ = false;
+          }
+        }
+
+        // Default behavior is to allow combinations of spaces and delimiter
+        // which defaults to a comma. Setting to not ignore whitespace will
+        // include the whitespace in the columns names
+        String[] colNames = columnList.split(delimiter_);
+        if(ignoreWhitespace_) {
+          List<String> columns = new ArrayList<String>();
+
+          for (String colName : colNames) {
+            String[] subColNames = colName.split(" ");
+
+            for (String subColName : subColNames) {
+              subColName = subColName.trim();
+              if (subColName.length() > 0) columns.add(subColName);
+            }
+          }
+
+          colNames = columns.toArray(new String[columns.size()]);
+        }
+
         for (String colName : colNames) {
             columnInfo_.add(new ColumnInfo(colName));
         }
@@ -239,7 +279,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             try {
               caster_ = (LoadCaster) PigContext.instantiateFuncFromSpec(casterOption);
             } catch (ClassCastException e) {
-                LOG.error("Congifured caster does not implement LoadCaster interface.");
+                LOG.error("Configured caster does not implement LoadCaster interface.");
                 throw new IOException(e);
             } catch (RuntimeException e) {
                 LOG.error("Configured caster class not found.", e);

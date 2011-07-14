@@ -9,7 +9,8 @@
       <maximumHeapSize value="128" />
       <maximumStackSize value="2" />
       <properties>
-        <property name="testcase" value="TestHBaseStorage" />
+        <property name="testcase" value="TestHBaseStorageParams" />
+        <property name="offline" value="true" />
       </properties>
     </buildFile>
   </component>
@@ -85,11 +86,6 @@
   <component name="ErrorTreeViewConfiguration">
     <option name="IS_AUTOSCROLL_TO_SOURCE" value="false" />
     <option name="HIDE_WARNINGS" value="false" />
-  </component>
-  <component name="FindManager">
-    <FindUsagesManager>
-      <setting name="OPEN_NEW_TAB" value="false" />
-    </FindUsagesManager>
   </component>
   <component name="GlobalLibrariesConfigurable.UI">
     <option name="proportions">
