@@ -192,7 +192,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
      *        specified, or a map of column descriptors to values when a column
      *        family is specified.
      *
-     * @throws ParseException when unale to parse arguments
+     * @throws ParseException when unable to parse arguments
      * @throws IOException 
      */
     public HBaseStorage(String columnList) throws ParseException, IOException {
