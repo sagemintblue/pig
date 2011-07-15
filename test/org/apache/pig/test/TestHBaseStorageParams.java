@@ -64,8 +64,8 @@ public class TestHBaseStorageParams {
 
     @Test
     public void testColumnParsingWithDelim() throws IOException, ParseException {
-      HBaseStorage storage = new HBaseStorage("foo:a%foo:b % foo:c", "-delim %");
-      doColumnParseTest(storage, "foo:a", "foo:b", "foo:c");
+      HBaseStorage storage = new HBaseStorage("foo:a%foo:b % foo:c,d", "-delim %");
+      doColumnParseTest(storage, "foo:a", "foo:b", "foo:c,d");
     }
 
     @Test
@@ -73,12 +73,13 @@ public class TestHBaseStorageParams {
       throws IOException, ParseException {
 
       HBaseStorage storage =
-        new HBaseStorage("foo:a%foo:b % foo:c", "-delim % -ignoreWhitespace false");
-      doColumnParseTest(storage, "foo:a", "foo:b ", " foo:c");
+        new HBaseStorage("foo:a%foo:b % foo:c,d", "-delim % -ignoreWhitespace false");
+      doColumnParseTest(storage, "foo:a", "foo:b ", " foo:c,d");
     }
 
     private void doColumnParseTest(HBaseStorage storage, String... names) {
-      Assert.assertEquals("Wrong column count", names.length, storage.getColumnInfoList().size());
+      Assert.assertEquals("Wrong column count",
+        names.length, storage.getColumnInfoList().size());
 
       for (String name : names) {
         String[] cfAndName = name.split(":");

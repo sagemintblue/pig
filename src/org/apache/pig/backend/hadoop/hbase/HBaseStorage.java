@@ -240,33 +240,12 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         ignoreWhitespace_ = true;
         if (configuredOptions_.hasOption("ignoreWhitespace")) {
           String value = configuredOptions_.getOptionValue("ignoreWhitespace");
-          if (value == null || !value.equalsIgnoreCase("true")) {
+          if (!"true".equalsIgnoreCase(value)) {
             ignoreWhitespace_ = false;
           }
         }
 
-        // Default behavior is to allow combinations of spaces and delimiter
-        // which defaults to a comma. Setting to not ignore whitespace will
-        // include the whitespace in the columns names
-        String[] colNames = columnList.split(delimiter_);
-        if(ignoreWhitespace_) {
-          List<String> columns = new ArrayList<String>();
-
-          for (String colName : colNames) {
-            String[] subColNames = colName.split(" ");
-
-            for (String subColName : subColNames) {
-              subColName = subColName.trim();
-              if (subColName.length() > 0) columns.add(subColName);
-            }
-          }
-
-          colNames = columns.toArray(new String[columns.size()]);
-        }
-
-        for (String colName : colNames) {
-            columnInfo_.add(new ColumnInfo(colName));
-        }
+        columnInfo_ = parseColumnList(columnList, delimiter_, ignoreWhitespace_);
 
         m_conf = HBaseConfiguration.create();
         String defaultCaster = UDFContext.getUDFContext().getClientSystemProps().getProperty(CASTER_PROPERTY, STRING_CASTER);
@@ -292,6 +271,44 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         limit_ = Long.valueOf(configuredOptions_.getOptionValue("limit", "-1"));
         noWAL_ = configuredOptions_.hasOption("noWAL");
         initScan();	    
+    }
+
+    /**
+     *
+     * @param columnList
+     * @param delimiter
+     * @param ignoreWhitespace
+     * @return
+     */
+    private List<ColumnInfo> parseColumnList(String columnList,
+                                             String delimiter,
+                                             boolean ignoreWhitespace) {
+        List<ColumnInfo> columnInfo = new ArrayList<ColumnInfo>();
+
+        // Default behavior is to allow combinations of spaces and delimiter
+        // which defaults to a comma. Setting to not ignore whitespace will
+        // include the whitespace in the columns names
+        String[] colNames = columnList.split(delimiter);
+        if(ignoreWhitespace) {
+            List<String> columns = new ArrayList<String>();
+
+            for (String colName : colNames) {
+                String[] subColNames = colName.split(" ");
+
+                for (String subColName : subColNames) {
+                    subColName = subColName.trim();
+                    if (subColName.length() > 0) columns.add(subColName);
+                }
+            }
+
+            colNames = columns.toArray(new String[columns.size()]);
+        }
+
+        for (String colName : colNames) {
+            columnInfo.add(new ColumnInfo(colName));
+        }
+
+        return columnInfo;
     }
 
     private void initScan() {
@@ -322,13 +339,13 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
                 // all column family filters roll up to one parent OR filter
                 if (allColumnFilters == null) {
                     allColumnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
-        }
+                }
 
                 if (LOG.isInfoEnabled()) {
                     LOG.info("Adding family:prefix filters with values " +
                         Bytes.toString(colInfo.getColumnFamily()) + COLON +
                         Bytes.toString(colInfo.getColumnPrefix()));
-    }
+                }
 
                 // each column family filter consists of a FamilyFilter AND a PrefixFilter
                 FilterList thisColumnFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
