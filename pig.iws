@@ -122,7 +122,7 @@
       <file leaf-file-name="HBaseStorage.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="317" column="83" selection-start="14909" selection-end="14909" vertical-scroll-proportion="0.59043926">
+            <state line="308" column="96" selection-start="14469" selection-end="14469" vertical-scroll-proportion="0.41602066">
               <folding />
             </state>
           </provider>
@@ -888,7 +888,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="317" column="83" selection-start="14909" selection-end="14909" vertical-scroll-proportion="0.59043926">
+        <state line="308" column="96" selection-start="14469" selection-end="14469" vertical-scroll-proportion="0.41602066">
           <folding />
         </state>
       </provider>
