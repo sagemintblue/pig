@@ -415,6 +415,7 @@ nested_op : nested_proj
           | nested_sort
           | nested_distinct
           | nested_limit
+          | nested_cross
 ;
 
 nested_proj 
@@ -438,7 +439,15 @@ nested_limit
     : ^( LIMIT { sb.append($LIMIT.text).append(" "); }  nested_op_input ( INTEGER { sb.append(" ").append($INTEGER.text); } | expr ) )
 ;
 
+nested_cross
+    : ^( CROSS { sb.append($CROSS.text).append(" "); }  nested_op_input_list )
+;
+
 nested_op_input : col_ref | nested_proj
+;
+
+nested_op_input_list 
+    : nested_op_input ( { sb.append(", "); } nested_op_input)*
 ;
 
 stream_clause 
@@ -569,7 +578,7 @@ eid : rel_str_op
     | CACHE     { sb.append($CACHE.text); }
     | INPUT     { sb.append($INPUT.text); }
     | OUTPUT    { sb.append($OUTPUT.text); }
-    | ERROR     { sb.append($ERROR.text); }
+    | STDERROR  { sb.append($STDERROR.text); }
     | STDIN     { sb.append($STDIN.text); }
     | STDOUT    { sb.append($STDOUT.text); }
     | LIMIT     { sb.append($LIMIT.text); }
