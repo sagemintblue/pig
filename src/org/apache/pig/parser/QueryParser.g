@@ -67,6 +67,7 @@ tokens {
     MACRO_INLINE;
     NULL;
     IDENTIFIER;
+    ANY;
 }
 
 @header {
@@ -464,10 +465,10 @@ neg_expr : MINUS cast_expr
         -> ^( NEG cast_expr )
 ;
 
-limit_clause : LIMIT^ rel ( INTEGER | LONGINTEGER | expr )
+limit_clause : LIMIT^ rel ( (INTEGER SEMI_COLON) => INTEGER | (LONGINTEGER SEMI_COLON) => LONGINTEGER | expr )
 ;
 
-sample_clause : SAMPLE^ rel ( DOUBLENUMBER | expr )
+sample_clause : SAMPLE^ rel ( (DOUBLENUMBER SEMI_COLON) => DOUBLENUMBER | expr )
 ;
 
 order_clause : ORDER^ rel BY! order_by_clause ( USING! func_clause )?
@@ -568,6 +569,7 @@ nested_op : nested_filter
           | nested_sort
           | nested_distinct
           | nested_limit
+          | nested_cross
 ;
 
 nested_proj : col_ref PERIOD col_ref_list
@@ -587,10 +589,17 @@ nested_sort : ORDER^ nested_op_input BY!  order_by_clause ( USING! func_clause )
 nested_distinct : DISTINCT^ nested_op_input
 ;
 
-nested_limit : LIMIT^ nested_op_input ( INTEGER | expr )
+nested_limit : LIMIT^ nested_op_input ( (INTEGER SEMI_COLON) => INTEGER | expr )
+;
+
+nested_cross : CROSS^ nested_op_input_list
 ;
 
 nested_op_input : col_ref | nested_proj
+;
+
+nested_op_input_list : nested_op_input ( COMMA nested_op_input )*
+        -> nested_op_input+
 ;
 
 stream_clause : STREAM^ rel THROUGH! ( EXECCOMMAND | alias ) as_clause?
@@ -662,7 +671,6 @@ eid : rel_str_op
     | LOAD
     | FILTER
     | FOREACH
-    | MATCHES
     | ORDER
     | DISTINCT
     | COGROUP
@@ -686,7 +694,6 @@ eid : rel_str_op
     | NOT
     | GENERATE
     | FLATTEN
-    | EVAL
     | ASC
     | DESC
     | INT

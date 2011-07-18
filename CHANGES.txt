@@ -24,6 +24,19 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2161: TOTUPLE should use no-copy tuple creation (dvryaboy)
+
+PIG-1946: HBaseStorage constructor syntax is error prone (billgraham via dvryaboy)
+
+PIG-2001: DefaultTuple(List) constructor is inefficient, causes List.size()
+ System.arraycopy() calls (though they are 0 byte copies), 
+ DefaultTuple(int) constructor is a bit misleading wrt time 
+ complexity (woody via thejas)
+
+PIG-1916: Nested cross (zjshen via daijy)
+
+PIG-2128: Generating the jar file takes a lot of time and is unnecessary when running Pig local mode (julien)
+
 PIG-2121: e2e test harness should use ant instead of make (gates)
 
 PIG-2142: Allow registering multiple jars from DFS via single statement (rangadi via dvryaboy)
@@ -65,6 +78,13 @@ OPTIMIZATIONS
 PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 
 BUG FIXES
+
+PIG-2162: bin/pig should not modify user args (rangadi via thejas)
+
+PIG-2060: Fix errors in pig grammars reported by ANTLRWorks (azaroth via thejas)
+
+PIG-2156: Limit/Sample with variable does not work if the expression starts 
+ with an integer/double (azaroth via thejas)
 
 PIG-2130: Piggybank:MultiStorage is not compressing output files (vivekp via daijy)
 
