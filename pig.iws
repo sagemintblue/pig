@@ -119,19 +119,19 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="HBaseStorage.java" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="HBaseStorage.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="308" column="96" selection-start="14469" selection-end="14469" vertical-scroll-proportion="0.41602066">
+            <state line="314" column="61" selection-start="14742" selection-end="14742" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="TestHBaseStorage.java" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="TestHBaseStorage.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/test/org/apache/pig/test/TestHBaseStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="289" column="23" selection-start="10994" selection-end="10994" vertical-scroll-proportion="0.0">
+            <state line="67" column="57" selection-start="2485" selection-end="2495" vertical-scroll-proportion="0.3329098">
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -877,19 +877,19 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/org/apache/pig/test/TestHBaseStorage.java">
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="289" column="23" selection-start="10994" selection-end="10994" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
+        <state line="314" column="61" selection-start="14742" selection-end="14742" vertical-scroll-proportion="0.0">
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
+    <entry file="file://$PROJECT_DIR$/test/org/apache/pig/test/TestHBaseStorage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="308" column="96" selection-start="14469" selection-end="14469" vertical-scroll-proportion="0.41602066">
-          <folding />
+        <state line="67" column="57" selection-start="2485" selection-end="2495" vertical-scroll-proportion="0.3329098">
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
