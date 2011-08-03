@@ -315,7 +315,7 @@ public class PigAvroDatumWriter extends GenericDatumWriter<Object> {
 
     }
 
-    private NullPointerException npe(NullPointerException e, String s) {
+    protected NullPointerException npe(NullPointerException e, String s) {
         NullPointerException result = new NullPointerException(e.getMessage()
                                         + s);
         result.initCause(e.getCause() == null ? e : e.getCause());
@@ -347,23 +347,6 @@ public class PigAvroDatumWriter extends GenericDatumWriter<Object> {
         } else
             throw new RuntimeException("Unsupported type fixed:" + datum.getClass());
 
-    }
-
-    /**
-     * Called by the implementation of {@link #writeRecord} to retrieve
-     * a record field value.
-     */
-    @Override
-    protected Object getField(Object record, String name, int pos) {
-        if (record instanceof Tuple) {
-            try {
-                return ((Tuple) record).get(pos);
-            } catch (ExecException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-        } else
-            throw new RuntimeException("Unsupported type in record:" + record.getClass());
     }
 
     /**
