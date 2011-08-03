@@ -2,13 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="14a39489-4d01-423a-a4ff-2909d99802dd" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/avro_test_files/expected_testRecordSplitFromText1.avro" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/avro_test_files/expected_testRecordSplitFromText2.avro" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/test/java/org/apache/avro/generic/TestGenericData.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/test/java/org/apache/avro/generic/TestGenericData.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java" afterPath="$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pig.iws" afterPath="$PROJECT_DIR$/pig.iws" />
     </list>
     <ignored path="pig.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -159,7 +155,7 @@
       <file leaf-file-name="TestAvroStorage.java" pinned="true" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="322" column="33" selection-start="14630" selection-end="14630" vertical-scroll-proportion="5.507576">
+            <state line="158" column="20" selection-start="6599" selection-end="6599" vertical-scroll-proportion="0.6618557">
               <folding />
             </state>
           </provider>
@@ -676,7 +672,7 @@
     <frame x="1497" y="-124" width="1515" height="1128" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.5646718" sideWeight="0.9992938" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.4469112" sideWeight="0.9992938" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Phing Build" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="14" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.42455244" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -691,7 +687,7 @@
       <window_info id="Maven Projects" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="13" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="15" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.17840375" sideWeight="0.4353282" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.17840375" sideWeight="0.5530888" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32722008" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -726,7 +722,7 @@
     <option name="CHECK_COMMIT_MESSAGE_SPELLING" value="true" />
     <option name="DEFAULT_PATCH_EXTENSION" value="patch" />
     <option name="FORCE_NON_EMPTY_COMMENT" value="false" />
-    <option name="LAST_COMMIT_MESSAGE" value="First pass at PIG_2195" />
+    <option name="LAST_COMMIT_MESSAGE" value="More tests for PIG_2195" />
     <option name="MAKE_NEW_CHANGELIST_ACTIVE" value="true" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="false" />
     <option name="CHECK_FILES_UP_TO_DATE_BEFORE_COMMIT" value="false" />
@@ -740,6 +736,7 @@
     <option name="SHOW_FILE_HISTORY_AS_TREE" value="false" />
     <option name="FILE_HISTORY_SPLITTER_PROPORTION" value="0.6" />
     <MESSAGE value="First pass at PIG_2195" />
+    <MESSAGE value="More tests for PIG_2195" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -960,7 +957,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="322" column="33" selection-start="14630" selection-end="14630" vertical-scroll-proportion="5.507576">
+        <state line="158" column="20" selection-start="6599" selection-end="6599" vertical-scroll-proportion="0.6618557">
           <folding />
         </state>
       </provider>
