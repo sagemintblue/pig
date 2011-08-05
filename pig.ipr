@@ -10,6 +10,7 @@
       <maximumStackSize value="2" />
       <properties>
         <property name="testcase" value="TestHBaseStorage" />
+        <property name="offline" value="true" />
       </properties>
     </buildFile>
     <buildFile url="file://$PROJECT_DIR$/contrib/piggybank/java/build.xml">
@@ -429,6 +430,24 @@
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
+    <library name="avro-1.4.1">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/avro-1.4.1.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="file://$PROJECT_DIR$/../../downloads/avro/avro-src-1.4.1/lang/java/src/java" />
+      </SOURCES>
+    </library>
+    <library name="avro-1.5.1">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/build/ivy/lib/Pig/avro-1.5.1.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="file://$PROJECT_DIR$/../../downloads/avro/avro-src-1.5.1/lang/java/avro/src/main/java" />
+      </SOURCES>
+    </library>
     <library name="lib">
       <CLASSES>
         <root url="jar://$PROJECT_DIR$/lib/zookeeper-hbase-1329.jar!/" />
