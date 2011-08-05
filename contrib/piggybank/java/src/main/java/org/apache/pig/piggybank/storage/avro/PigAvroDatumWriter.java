@@ -315,6 +315,13 @@ public class PigAvroDatumWriter extends GenericDatumWriter<Object> {
 
     }
 
+    protected NullPointerException npe(NullPointerException e, String s) {
+        NullPointerException result = new NullPointerException(e.getMessage()
+                                        + s);
+        result.initCause(e.getCause() == null ? e : e.getCause());
+        return result;
+    }
+
   /**
      * Called to write a bytes. 
      */

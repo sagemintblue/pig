@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="14a39489-4d01-423a-a4ff-2909d99802dd" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java" afterPath="$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pig.iml" afterPath="$PROJECT_DIR$/pig.iml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ivy/libraries.properties" afterPath="$PROJECT_DIR$/ivy/libraries.properties" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pig.iws" afterPath="$PROJECT_DIR$/pig.iws" />
     </list>
     <ignored path="pig.iws" />
@@ -149,7 +149,16 @@
       <file leaf-file-name="GenericDatumWriter.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/../../downloads/avro/avro-src-1.5.1/lang/java/avro/src/main/java/org/apache/avro/generic/GenericDatumWriter.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="94" column="59" selection-start="3476" selection-end="3476" vertical-scroll-proportion="0.0">
+            <state line="95" column="0" selection-start="3185" selection-end="3477" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="PigAvroDatumWriter.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="339" column="8" selection-start="11849" selection-end="11849" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -164,28 +173,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="NullWritable.class" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/hadoop-core-0.20.2.jar!/org/apache/hadoop/io/NullWritable.class">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="50" selection-start="392" selection-end="392" vertical-scroll-proportion="-6.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="libraries.properties" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="libraries.properties" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ivy/libraries.properties">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="3" column="56" selection-start="182" selection-end="182" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="PigAvroDatumWriter.java" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="377" column="43" selection-start="13184" selection-end="13184" vertical-scroll-proportion="0.73312885">
+            <state line="27" column="31" selection-start="1031" selection-end="1031" vertical-scroll-proportion="0.55479455">
               <folding />
             </state>
           </provider>
@@ -278,16 +269,16 @@
   </component>
   <component name="PropertiesComponent">
     <property name="project.structure.last.edited" value="Modules" />
-    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth0" value="191" />
-    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth1" value="199" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth0" value="190" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth1" value="197" />
     <property name="project.structure.proportion" value="0.15" />
     <property name="recentsLimit" value="5" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth0" value="196" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder1" value="1" />
     <property name="MemberChooser.sorted" value="false" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder0" value="0" />
-    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth2" value="203" />
-    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth3" value="996" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth2" value="201" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth3" value="988" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth3" value="994" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth2" value="201" />
     <property name="GoToClass.includeJavaFiles" value="false" />
@@ -470,31 +461,31 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="1556" y="-102" width="1640" height="1106" extended-state="0" />
-    <editor active="false" />
+    <editor active="true" />
     <layout>
-      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32840237" sideWeight="0.0" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Phing Build" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="14" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32840237" sideWeight="0.0" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Phing Build" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="15" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.2173913" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.11943069" sideWeight="0.74852073" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3984221" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="IDEtalk" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
+      <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="IDEtalk" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="13" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25641027" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.2514793" sideWeight="0.99531066" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2514793" sideWeight="0.99531066" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24929379" sideWeight="0.67391306" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Maven Projects" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="13" side_tool="false" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="15" side_tool="false" content_ui="tabs" />
+      <window_info id="Maven Projects" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="14" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="16" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.13056931" sideWeight="0.60157794" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.13056931" sideWeight="0.74852073" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.43589744" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Web" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="EJB" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="EJB" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="VcsManagerConfiguration">
@@ -694,34 +685,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ivy/libraries.properties">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="3" column="56" selection-start="182" selection-end="182" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/avro-1.5.1.jar!/org/apache/avro/generic/GenericData.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="161" column="0" selection-start="6606" selection-end="6606" vertical-scroll-proportion="0.83425415">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/avro-1.5.1.jar!/org/apache/avro/generic/GenericDatumWriter.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="52" column="1" selection-start="3095" selection-end="3095" vertical-scroll-proportion="0.83425415">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/hadoop-core-0.20.2.jar!/org/apache/hadoop/io/NullWritable.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="50" selection-start="392" selection-end="392" vertical-scroll-proportion="-6.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/org/apache/pig/data/DefaultTuple.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="164" column="0" selection-start="5859" selection-end="5859" vertical-scroll-proportion="0.0">
@@ -735,13 +698,6 @@
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroRecordWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="0" selection-start="1711" selection-end="1711" vertical-scroll-proportion="0.0">
-          <folding />
         </state>
       </provider>
     </entry>
@@ -761,14 +717,28 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/../../downloads/avro/avro-src-1.5.1/lang/java/avro/src/main/java/org/apache/avro/generic/GenericDatumWriter.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="94" column="59" selection-start="3476" selection-end="3476" vertical-scroll-proportion="0.0">
+        <state line="95" column="0" selection-start="3185" selection-end="3477" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroRecordWriter.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="48" column="0" selection-start="1711" selection-end="1711" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="377" column="43" selection-start="13184" selection-end="13184" vertical-scroll-proportion="0.73312885">
+        <state line="339" column="8" selection-start="11849" selection-end="11849" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ivy/libraries.properties">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="27" column="31" selection-start="1031" selection-end="1031" vertical-scroll-proportion="0.55479455">
           <folding />
         </state>
       </provider>
