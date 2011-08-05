@@ -350,6 +350,38 @@ public class PigAvroDatumWriter extends GenericDatumWriter<Object> {
     }
 
     /**
+     * Overriding to fetch the field value from the Tuple.
+     */
+    @Override
+    protected void writeRecord(Schema schema, Object datum, Encoder out)
+      throws IOException {
+      for (Field f : schema.getFields()) {
+        Object value = getField(datum, f.name(), f.pos());
+        try {
+          write(f.schema(), value, out);
+        } catch (NullPointerException e) {
+          throw npe(e, " in field "+f.name());
+        }
+      }
+    }
+
+    /**
+     * Called by the implementation of {@link #writeRecord} to retrieve
+     * a record field value.
+     */
+    protected Object getField(Object record, String name, int pos) {
+        if (record instanceof Tuple) {
+            try {
+                return ((Tuple) record).get(pos);
+            } catch (ExecException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        } else
+            throw new RuntimeException("Unsupported type in record:" + record.getClass());
+    }
+
+    /**
      * Called by the implementation of {@link #writeArray} to get the
      * size of an array.
      */
