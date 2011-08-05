@@ -315,6 +315,10 @@ public class PigAvroDatumWriter extends GenericDatumWriter<Object> {
 
     }
 
+   /**
+    * As of Avro 1.5.1 this method is now in the superclass so it's no longer
+    * needed here, but leaving here for backward compatibility with Avro 1.4.1.
+    */
     protected NullPointerException npe(NullPointerException e, String s) {
         NullPointerException result = new NullPointerException(e.getMessage()
                                         + s);
