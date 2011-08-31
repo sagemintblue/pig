@@ -2,9 +2,21 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="14a39489-4d01-423a-a4ff-2909d99802dd" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/test/java/org/apache/avro/generic/TestGenericData.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/test/java/org/apache/avro/generic/TestGenericData.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/input" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/output" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pig.iws" afterPath="$PROJECT_DIR$/pig.iws" />
+    </list>
+    <list id="92c471ca-2f00-4e7c-a0bb-e45801414ea8" name="AVRO-872" comment="" />
+    <list id="4e9cdca5-dbff-48b0-a3b2-fbef2ba03fb6" name="AVRO-875" comment="" />
+    <list id="18ad1811-06ed-4c82-ae86-94d2e0f694a2" name="AVRO-877" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/input/player.avsc" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/input/position.avsc" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/output/Player.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/compiler/output/Position.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/test/java/org/apache/avro/tool/TestSpecificCompilerTool.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/compiler/src/main/java/org/apache/avro/compiler/specific/SpecificCompiler.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/compiler/src/main/java/org/apache/avro/compiler/specific/SpecificCompiler.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/main/java/org/apache/avro/tool/SpecificCompilerTool.java" afterPath="$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/tools/src/main/java/org/apache/avro/tool/SpecificCompilerTool.java" />
     </list>
     <ignored path="pig.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -143,40 +155,49 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="AvroStorage.java" pinned="true" current="false" current-in-tab="false">
+      <file leaf-file-name="AvroStorage.java" pinned="true" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="276" column="63" selection-start="10591" selection-end="10591" vertical-scroll-proportion="-13.846154">
+            <state line="102" column="66" selection-start="4135" selection-end="4135" vertical-scroll-proportion="0.486911">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="TestAvroStorage.java" pinned="true" current="true" current-in-tab="true">
+      <file leaf-file-name="TestAvroStorage.java" pinned="true" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="158" column="20" selection-start="6599" selection-end="6599" vertical-scroll-proportion="0.6618557">
+            <state line="214" column="14" selection-start="9673" selection-end="9673" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="libraries.properties" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ivy/libraries.properties">
+      <file leaf-file-name="HBaseStorage.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="29" column="41" selection-start="1076" selection-end="1076" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="PigSchema2Avro.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigSchema2Avro.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="177" column="32" selection-start="7000" selection-end="7013" vertical-scroll-proportion="-4.076923">
+            <state line="526" column="12" selection-start="22993" selection-end="22993" vertical-scroll-proportion="0.0">
               <folding>
-                <element signature="imports" expanded="true" />
+                <element signature="imports" expanded="false" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="LoadPushDown.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/org/apache/pig/LoadPushDown.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="35" column="17" selection-start="1424" selection-end="1424" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="HBaseTableInputFormat.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseTableInputFormat.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="67" column="0" selection-start="2501" selection-end="2501" vertical-scroll-proportion="0.0">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -184,7 +205,7 @@
       <file leaf-file-name="InputOutputFileValidator.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/org/apache/pig/newplan/logical/rules/InputOutputFileValidator.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="63" column="57" selection-start="2562" selection-end="2562" vertical-scroll-proportion="0.0">
+            <state line="63" column="46" selection-start="2562" selection-end="2562" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -202,7 +223,7 @@
       <file leaf-file-name="Schema.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="76" column="22" selection-start="2912" selection-end="2912" vertical-scroll-proportion="-5.769231">
+            <state line="75" column="3" selection-start="2889" selection-end="2889" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -211,7 +232,7 @@
       <file leaf-file-name="PigAvroDatumWriter.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="127" column="0" selection-start="4317" selection-end="4317" vertical-scroll-proportion="0.0">
+            <state line="108" column="0" selection-start="3606" selection-end="3606" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -231,12 +252,13 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java" />
         <option value="$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java" />
         <option value="$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigSchema2Avro.java" />
         <option value="$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorage.java" />
         <option value="$PROJECT_DIR$/ivy/libraries.properties" />
         <option value="$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java" />
+        <option value="$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseTableInputFormat.java" />
+        <option value="$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java" />
       </list>
     </option>
   </component>
@@ -271,7 +293,7 @@
     </navigator>
     <panes>
       <pane id="Scope" />
-      <pane id="PackagesPane" />
+      <pane id="Favorites" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -300,13 +322,27 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="pig" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="pig" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
               <option name="myItemId" value="ivy" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
-      <pane id="Favorites" />
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -341,6 +377,14 @@
     <property name="dynamic.classpath" value="false" />
   </component>
   <component name="RunManager" selected="JUnit.TestAvroStorage.testRecordWithSplitFromText">
+    <configuration default="true" type="PHPUnitRunConfigurationType" factoryName="PHPUnit">
+      <method>
+        <option name="AntTarget" enabled="false" />
+        <option name="BuildArtifacts" enabled="false" />
+        <option name="Maven.BeforeRunTask" enabled="false" />
+        <option name="PhingTarget" enabled="false" />
+      </method>
+    </configuration>
     <configuration default="true" type="Remote" factoryName="Remote">
       <option name="USE_SOCKET_TRANSPORT" value="true" />
       <option name="SERVER_MODE" value="false" />
@@ -426,6 +470,18 @@
         <option name="AntTarget" enabled="false" />
         <option name="BuildArtifacts" enabled="false" />
         <option name="Make" enabled="true" />
+        <option name="Maven.BeforeRunTask" enabled="false" />
+        <option name="PhingTarget" enabled="false" />
+      </method>
+    </configuration>
+    <configuration default="true" type="PhpUnitRemoteRunConfigurationType" factoryName="PHPUnit on Server">
+      <method>
+        <option name="AntTarget" enabled="false" />
+        <option name="BuildArtifacts" enabled="false" />
+        <option name="FtpUpload" enabled="false">
+          <server_id />
+          <server_name />
+        </option>
         <option name="Maven.BeforeRunTask" enabled="false" />
         <option name="PhingTarget" enabled="false" />
       </method>
@@ -666,31 +722,47 @@
       <created>1310573663975</created>
       <updated>1310573663975</updated>
     </task>
+    <task id="LOCAL-00001" summary="AVRO-872">
+      <changelist id="92c471ca-2f00-4e7c-a0bb-e45801414ea8" name="AVRO-872" comment="" />
+      <created>1314657759931</created>
+      <updated>1314657759931</updated>
+    </task>
+    <task id="LOCAL-00002" summary="AVRO-875">
+      <changelist id="4e9cdca5-dbff-48b0-a3b2-fbef2ba03fb6" name="AVRO-875" comment="" />
+      <created>1314657759931</created>
+      <updated>1314657759931</updated>
+    </task>
+    <task id="LOCAL-00003" summary="AVRO-877">
+      <changelist id="18ad1811-06ed-4c82-ae86-94d2e0f694a2" name="AVRO-877" comment="" />
+      <created>1314657759931</created>
+      <updated>1314657759931</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1497" y="-124" width="1515" height="1128" extended-state="0" />
-    <editor active="false" />
+    <frame x="1817" y="-104" width="1507" height="1096" extended-state="0" />
+    <editor active="true" />
     <layout>
-      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.4469112" sideWeight="0.9992938" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.2569721" sideWeight="0.9993257" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Phing Build" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="14" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.42455244" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.12139504" sideWeight="0.5588803" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.503861" sideWeight="0.98677087" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="IDEtalk" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25482625" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4411197" sideWeight="0.9885982" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.17706238" sideWeight="0.5588803" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.19285233" sideWeight="0.74302787" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="13" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="15" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.17840375" sideWeight="0.5530888" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.21915036" sideWeight="0.8067729" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32722008" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.1932271" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4411197" sideWeight="0.9885982" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Web" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="EJB" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -860,104 +932,88 @@
     </buildFile>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroRecordWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="0" selection-start="1711" selection-end="1711" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/newplan/logical/rules/InputOutputFileValidator.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="63" column="57" selection-start="2562" selection-end="2562" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="127" column="0" selection-start="4317" selection-end="4317" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorageUtils.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="79" column="39" selection-start="3148" selection-end="3148" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/build.xml">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="83" column="89" selection-start="3871" selection-end="3871" vertical-scroll-proportion="-15.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/HiveColumnarLoader.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="32" column="34" selection-start="1282" selection-end="1282" vertical-scroll-proportion="0.33333334">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/org/apache/pig/impl/PigContext.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="514" column="0" selection-start="16983" selection-end="16983" vertical-scroll-proportion="1.6025641">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="76" column="22" selection-start="2912" selection-end="2912" vertical-scroll-proportion="-5.769231">
-          <folding />
-        </state>
+        <state line="514" column="0" selection-start="16983" selection-end="16983" vertical-scroll-proportion="1.6025641" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/generic/GenericDatumWriter.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="100" column="0" selection-start="3670" selection-end="3670" vertical-scroll-proportion="0.37238494">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigSchema2Avro.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="177" column="32" selection-start="7000" selection-end="7013" vertical-scroll-proportion="-4.076923">
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
+        <state line="100" column="0" selection-start="3670" selection-end="3670" vertical-scroll-proportion="0.37238494" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/ivy/libraries.properties">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="29" column="41" selection-start="1076" selection-end="1076" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="29" column="41" selection-start="1076" selection-end="1076" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
+    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigSchema2Avro.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="123" column="13" selection-start="5567" selection-end="5567" vertical-scroll-proportion="-0.827853">
-          <folding />
-        </state>
+        <state line="187" column="32" selection-start="7323" selection-end="7336" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorage.java">
+    <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/hbase-0.90.0.jar!/org/apache/hadoop/hbase/mapreduce/TableInputFormat.class">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="276" column="63" selection-start="10591" selection-end="10591" vertical-scroll-proportion="-13.846154">
-          <folding />
-        </state>
+        <state line="5" column="13" selection-start="171" selection-end="171" vertical-scroll-proportion="0.16666667" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/LoadFunc.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="54" column="22" selection-start="2323" selection-end="2323" vertical-scroll-proportion="0.3326316" />
+      </provider>
+    </entry>
+    <entry file="jar://$PROJECT_DIR$/build/ivy/lib/Pig/hbase-0.90.0.jar!/org/apache/hadoop/hbase/client/HTable.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="108" column="14" selection-start="6669" selection-end="6669" vertical-scroll-proportion="0.34439835" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/test/java/org/apache/pig/piggybank/test/storage/avro/TestAvroStorage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="158" column="20" selection-start="6599" selection-end="6599" vertical-scroll-proportion="0.6618557">
+        <state line="214" column="14" selection-start="9673" selection-end="9673" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseStorage.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="526" column="12" selection-start="22993" selection-end="22993" vertical-scroll-proportion="0.0">
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/LoadPushDown.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="35" column="17" selection-start="1424" selection-end="1424" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/backend/hadoop/hbase/HBaseTableInputFormat.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="67" column="0" selection-start="2501" selection-end="2501" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/org/apache/pig/newplan/logical/rules/InputOutputFileValidator.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="63" column="46" selection-start="2562" selection-end="2562" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorageUtils.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="79" column="39" selection-start="3148" selection-end="3148" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../avro-svn/avro-trunk/lang/java/avro/src/main/java/org/apache/avro/Schema.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="75" column="3" selection-start="2889" selection-end="2889" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/PigAvroDatumWriter.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="108" column="0" selection-start="3606" selection-end="3606" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/contrib/piggybank/java/src/main/java/org/apache/pig/piggybank/storage/avro/AvroStorage.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="102" column="66" selection-start="4135" selection-end="4135" vertical-scroll-proportion="0.486911">
           <folding />
         </state>
       </provider>
