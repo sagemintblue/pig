@@ -201,7 +201,7 @@ type : simple_type | tuple_type | bag_type | map_type
 ;
 
 simple_type 
-    : INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY 
+    : BOOLEAN | INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY 
 ;
 
 tuple_type 
@@ -439,6 +439,7 @@ nested_op : nested_proj
           | nested_distinct
           | nested_limit
           | nested_cross
+          | nested_foreach
 ;
 
 nested_proj 
@@ -464,6 +465,9 @@ nested_limit
 nested_cross : ^( CROSS nested_op_input_list )
 ;
 
+nested_foreach : ^( FOREACH nested_op_input generate_clause )
+;
+
 nested_op_input_list : nested_op_input+
 ;
 
@@ -479,11 +483,15 @@ mr_clause
 ;
 
 split_clause 
-    : ^( SPLIT rel split_branch split_branch+ )
+    : ^( SPLIT rel split_branch+ split_otherwise? )
 ;
 
 split_branch
     : ^( SPLIT_BRANCH alias cond )
+;
+
+split_otherwise 
+    : ^( OTHERWISE alias ) 
 ;
 
 col_ref : alias_col_ref | dollar_col_ref
@@ -522,7 +530,9 @@ scalar
     | FLOATNUMBER
     | DOUBLENUMBER
     | QUOTEDSTRING
-    | NULL    
+    | NULL
+    | TRUE
+    | FALSE
 ;
 
 map 
@@ -579,6 +589,7 @@ eid : rel_str_op
     | EVAL
     | ASC
     | DESC
+    | BOOLEAN
     | INT
     | LONG
     | FLOAT
@@ -590,6 +601,8 @@ eid : rel_str_op
     | MAP
     | IS
     | NULL
+    | TRUE
+    | FALSE
     | STREAM
     | THROUGH
     | STORE
@@ -606,7 +619,10 @@ eid : rel_str_op
     | LEFT
     | RIGHT
     | FULL
-    | IDENTIFIER 
+    | IDENTIFIER
+    | TOBAG
+    | TOMAP
+    | TOTUPLE
 ;
 
 // relational operator

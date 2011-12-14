@@ -72,6 +72,7 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.PigContext;
 import org.apache.pig.impl.io.FileLocalizer;
 import org.apache.pig.impl.io.FileSpec;
+import org.apache.pig.impl.io.NullableBooleanWritable;
 import org.apache.pig.impl.io.NullableBytesWritable;
 import org.apache.pig.impl.io.NullableDoubleWritable;
 import org.apache.pig.impl.io.NullableFloatWritable;
@@ -499,9 +500,8 @@ public class JobControlCompiler{
                     .getTemporaryPath(pigContext).toString();
                     tmpLocation = new Path(tmpLocationStr);
                     conf.set("pig.streaming.log.dir",
-                            new Path(tmpLocation, LOG_DIR).toString());
-                
-            } 
+                            new Path(tmpLocation, LOG_DIR).toString());            
+                } 
                 conf.set("pig.streaming.task.output.dir", outputPathString);
             }
            else if (mapStores.size() + reduceStores.size() > 0) { // multi store case
@@ -512,8 +512,13 @@ public class JobControlCompiler{
 
                 nwJob.setOutputFormatClass(PigOutputFormat.class);
                 
+                boolean disableCounter = conf.getBoolean("pig.disable.counter", false);
+                if (disableCounter) {
+                    log.info("Disable Pig custom output counters");
+                }
                 int idx = 0;
                 for (POStore sto: storeLocations) {
+                    sto.setDisableCounter(disableCounter);
                     sto.setMultiStore(true);
                     sto.setIndex(idx++);
                 }
@@ -698,7 +703,17 @@ public class JobControlCompiler{
             }
             if (maxCombinedSplitSize > 0)
                 conf.setLong("pig.maxCombinedSplitSize", maxCombinedSplitSize);
-                        
+            
+            // It's a hack to set distributed cache file for hadoop 23. Once MiniMRCluster do not require local
+            // jar on fixed location, this can be removed
+            if (pigContext.getExecType() == ExecType.MAPREDUCE) {
+                String newfiles = conf.get("alternative.mapreduce.job.cache.files");
+                if (newfiles!=null) {
+                    String files = conf.get("mapreduce.job.cache.files");
+                    conf.set("mapreduce.job.cache.files",
+                        files == null ? newfiles.toString() : files + "," + newfiles);
+                }
+            }
             // Serialize the UDF specific context info.
             UDFContext.getUDFContext().serialize(conf);
             Job cjob = new Job(new JobConf(nwJob.getConfiguration()), new ArrayList());
@@ -755,22 +770,25 @@ public class JobControlCompiler{
             }
         }
         long size = 0;
-        FileSystem fs = FileSystem.get(conf);
+        
         for (String input : inputs){
             //Using custom uri parsing because 'new Path(location).toUri()' fails
             // for some valid uri's (eg jdbc style), and 'new Uri(location)' fails
             // for valid hdfs paths that contain curly braces
-            if(!UriUtil.isHDFSFileOrLocal(input)){
-                //skip  if it is not hdfs or local file
+            if(!UriUtil.isHDFSFileOrLocalOrS3N(input)){
+                //skip  if it is not hdfs or local file or s3n
                 continue;
             }
+
             //the input file location might be a list of comma separeated files, 
             // separate them out
             for(String location : LoadFunc.getPathStrings(input)){
-                if(! UriUtil.isHDFSFileOrLocal(location)){
+                if(! UriUtil.isHDFSFileOrLocalOrS3N(location)){
                     continue;
                 }
-                FileStatus[] status=fs.globStatus(new Path(location));
+                Path path = new Path(location);
+                FileSystem fs = path.getFileSystem(conf);
+                FileStatus[] status=fs.globStatus(path);
                 if (status != null){
                     for (FileStatus s : status){
                         size += getPathLength(fs, s);
@@ -863,6 +881,12 @@ public class JobControlCompiler{
         }
     }
 
+    public static class PigBooleanWritableComparator extends PigWritableComparator {
+        public PigBooleanWritableComparator() {
+            super(NullableBooleanWritable.class);
+        }
+    }
+
     public static class PigIntWritableComparator extends PigWritableComparator {
         public PigIntWritableComparator() {
             super(NullableIntWritable.class);
@@ -913,6 +937,12 @@ public class JobControlCompiler{
     
     // XXX hadoop 20 new API integration: we need to explicitly set the Grouping 
     // Comparator
+    public static class PigGroupingBooleanWritableComparator extends WritableComparator {
+        public PigGroupingBooleanWritableComparator() {
+            super(NullableBooleanWritable.class, true);
+        }
+    }
+
     public static class PigGroupingIntWritableComparator extends WritableComparator {
         public PigGroupingIntWritableComparator() {
             super(NullableIntWritable.class, true);
@@ -992,6 +1022,10 @@ public class JobControlCompiler{
         }
         if (hasOrderBy) {
             switch (keyType) {
+            case DataType.BOOLEAN:
+                job.setSortComparatorClass(PigBooleanRawComparator.class);
+                break;
+
             case DataType.INTEGER:            	
                 job.setSortComparatorClass(PigIntRawComparator.class);               
                 break;
@@ -1037,6 +1071,11 @@ public class JobControlCompiler{
         }
 
         switch (keyType) {
+        case DataType.BOOLEAN:
+            job.setSortComparatorClass(PigBooleanWritableComparator.class);
+            job.setGroupingComparatorClass(PigGroupingBooleanWritableComparator.class);
+            break;
+
         case DataType.INTEGER:
             job.setSortComparatorClass(PigIntWritableComparator.class);
             job.setGroupingComparatorClass(PigGroupingIntWritableComparator.class);

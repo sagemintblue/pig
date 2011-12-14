@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,38 +17,22 @@
  */
 package org.apache.pig.test;
 
-import java.io.*;
-import java.util.Properties;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.mapred.MiniMRCluster;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
-
-/**
- * This class builds a single instance of itself with the Singleton 
- * design pattern. While building the single instance, it sets up a 
- * mini cluster that actually consists of a mini DFS cluster and a 
- * mini MapReduce cluster on the local machine and also sets up the 
- * environment for Pig to run on top of the mini cluster.
- */
-public class MiniCluster {
-    private MiniDFSCluster m_dfs = null;
+public class MiniCluster extends MiniGenericCluster {
     private MiniMRCluster m_mr = null;
-    private FileSystem m_fileSys = null;
-    private JobConf m_conf = null;
-    
-    private final static MiniCluster INSTANCE = new MiniCluster();
-    private static boolean isSetup = true;
-    
-    private MiniCluster() {
-        setupMiniDfsAndMrClusters();
+    public MiniCluster() {
+        super();
     }
-    
-    private void setupMiniDfsAndMrClusters() {
+
+    @Override
+    protected void setupMiniDfsAndMrClusters() {
         try {
             final int dataNodes = 4;     // There will be 4 data nodes
             final int taskTrackers = 4;  // There will be 4 task tracker nodes
@@ -83,68 +67,10 @@ public class MiniCluster {
             throw new RuntimeException(e);
         }
     }
-    
-    /**
-     * Returns the single instance of class MiniClusterBuilder that
-     * represents the resouces for a mini dfs cluster and a mini 
-     * mapreduce cluster. 
-     */
-    public static MiniCluster buildCluster() {
-        if(! isSetup){
-            INSTANCE.setupMiniDfsAndMrClusters();
-            isSetup = true;
-        }
-        return INSTANCE;
-    }
 
-    public void shutDown(){
-        INSTANCE.shutdownMiniDfsAndMrClusters();
-    }
-    
-    protected void finalize() {
-        shutdownMiniDfsAndMrClusters();
-    }
-    
-    private void shutdownMiniDfsAndMrClusters() {
-        isSetup = false;
-        try {
-            if (m_fileSys != null) { m_fileSys.close(); }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        if (m_dfs != null) { m_dfs.shutdown(); }
-        if (m_mr != null) { m_mr.shutdown(); }     
-        m_fileSys = null;
-        m_dfs = null;
-        m_mr = null;
-    }
-
-    public Properties getProperties() {
-        errorIfNotSetup();
-        return ConfigurationUtil.toProperties(m_conf);
-    }
-
-    public Configuration getConfiguration() {
-        return new Configuration(m_conf);
-    }
-
-    public void setProperty(String name, String value) {
-        errorIfNotSetup();
-        m_conf.set(name, value);
-    }
-    
-    public FileSystem getFileSystem() {
-        errorIfNotSetup();
-        return m_fileSys;
-    }
-    
-    /**
-     * Throw RunTimeException if isSetup is false
-     */
-    private void errorIfNotSetup(){
-        if(isSetup)
-            return;
-        String msg = "function called on MiniCluster that has been shutdown";
-        throw new RuntimeException(msg);
+    @Override
+    protected void shutdownMiniMrClusters() {
+        if (m_mr != null) { m_mr.shutdown(); }
+            m_mr = null;        
     }
 }

@@ -6,4 +6,3 @@ target/
 ivy/*.jar
 pig.jar
 pig-withouthadoop.jar
-

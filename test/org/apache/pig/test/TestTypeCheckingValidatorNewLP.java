@@ -42,10 +42,12 @@ import java.util.Properties;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.EvalFunc;
 import org.apache.pig.ExecType;
 import org.apache.pig.FuncSpec;
 import org.apache.pig.PigServer;
+import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
 import org.apache.pig.builtin.PigStorage;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -131,6 +133,7 @@ public class TestTypeCheckingValidatorNewLP {
      */
     @Before
     public void setUp() throws Exception {
+        pc.connect();
     }
 
     private static final String simpleEchoStreamingCommand;
@@ -623,6 +626,76 @@ public class TestTypeCheckingValidatorNewLP {
             throw new Exception("Error expected") ;
         }   
     }
+    
+    @Test
+    public void testExpressionTypeChecking10() throws Throwable {
+        // test whether the equal and not equal operators can accept two boolean operands
+        LogicalExpressionPlan plan = new LogicalExpressionPlan();
+        ConstantExpression constant1 = new ConstantExpression(plan, 10);
+        ConstantExpression constant2 = new ConstantExpression(plan, 20L);
+        ConstantExpression constant3 = new ConstantExpression(plan, Boolean.TRUE);
+
+        GreaterThanExpression gt1 = new GreaterThanExpression(plan, constant1, constant2);
+        EqualExpression equal1 = new EqualExpression(plan, gt1, constant3);
+        NotEqualExpression nq1 = new NotEqualExpression(plan, gt1, constant3);
+
+        CompilationMessageCollector collector = new CompilationMessageCollector();
+        TypeCheckingExpVisitor expTypeChecker = new TypeCheckingExpVisitor(
+                plan, collector, null);
+        expTypeChecker.visit();
+
+        plan.explain(System.out, "text", true);
+
+        printMessageCollector(collector);
+        // printTypeGraph(plan) ;
+
+        if (collector.hasError()) {
+            throw new Exception("Error during type checking");
+        }
+
+        // Induction check
+        assertEquals(DataType.BOOLEAN, gt1.getType());
+        assertEquals(DataType.BOOLEAN, equal1.getType());
+        assertEquals(DataType.BOOLEAN, nq1.getType());
+
+        // Cast insertion check
+        assertEquals(DataType.LONG, gt1.getLhs().getType());
+        assertEquals(DataType.BOOLEAN, equal1.getRhs().getType());
+        assertEquals(DataType.BOOLEAN, nq1.getRhs().getType());
+    }
+    
+    @Test
+    public void testExpressionTypeCheckingFail10() throws Throwable {
+        // test whether the equal and not equal operators will reject the comparison between
+        // a boolean value with a value of other type
+        LogicalExpressionPlan plan = new LogicalExpressionPlan();
+        ConstantExpression constant1 = new ConstantExpression(plan, 10);
+        ConstantExpression constant2 = new ConstantExpression(plan, 20L);
+        ConstantExpression constant3 = new ConstantExpression(plan, "true");
+
+        GreaterThanExpression gt1 = new GreaterThanExpression(plan, constant1,
+                constant2);
+        CastExpression cast1 = new CastExpression(plan,  constant3, createFS(DataType.BYTEARRAY)) ;
+        EqualExpression equal1 = new EqualExpression(plan, gt1, cast1);
+        NotEqualExpression nq1 = new NotEqualExpression(plan, gt1, cast1);
+
+        CompilationMessageCollector collector = new CompilationMessageCollector();
+        TypeCheckingExpVisitor expTypeChecker = new TypeCheckingExpVisitor(
+                plan, collector, null);
+
+        try {
+            expTypeChecker.visit();
+            fail("Exception expected");
+        } catch (TypeCheckerException pve) {
+            // good
+        }
+        printMessageCollector(collector);
+        // printTypeGraph(plan) ;
+
+        if (!collector.hasError()) {
+            throw new Exception("Error during type checking");
+        }
+    }
 
     @Test
     public void testArithmeticOpCastInsert1() throws Throwable {
@@ -793,12 +866,12 @@ public class TestTypeCheckingValidatorNewLP {
             
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
                 
             LOLoad load2 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 //                
 //                new LOLoad(plan,
@@ -928,12 +1001,12 @@ public class TestTypeCheckingValidatorNewLP {
             
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
                 
             LOLoad load2 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
   
             // schema for input#1
@@ -1036,7 +1109,7 @@ public class TestTypeCheckingValidatorNewLP {
     
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
     
             // schema for input#1
@@ -1104,7 +1177,7 @@ public class TestTypeCheckingValidatorNewLP {
 
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             // schema for input#1
             Schema inputSchema1 = null ;
@@ -1167,7 +1240,7 @@ public class TestTypeCheckingValidatorNewLP {
 
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             
             // schema for input#1
@@ -1229,7 +1302,7 @@ public class TestTypeCheckingValidatorNewLP {
     
             LOLoad load1 = new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 
     
@@ -1319,7 +1392,7 @@ public class TestTypeCheckingValidatorNewLP {
     
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 
             // schema for input#1
@@ -1404,7 +1477,7 @@ public class TestTypeCheckingValidatorNewLP {
     
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 
     
@@ -1487,7 +1560,7 @@ public class TestTypeCheckingValidatorNewLP {
 
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 
             // schema for input#1
@@ -1594,7 +1667,7 @@ public class TestTypeCheckingValidatorNewLP {
 
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
 
             // schema for input#1
@@ -1679,12 +1752,12 @@ public class TestTypeCheckingValidatorNewLP {
     
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             
             LOLoad load2 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
               
             // schema for input#1
@@ -1817,12 +1890,12 @@ public class TestTypeCheckingValidatorNewLP {
             String pigStorage = PigStorage.class.getName() ;
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             
             LOLoad load2 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             // schema for input#1
             Schema inputSchema1 = null ;
@@ -1932,16 +2005,16 @@ public class TestTypeCheckingValidatorNewLP {
             printCurrentMethodName();
             LogicalPlan plan = new LogicalPlan() ;
     
-            String pigStorage = PigStorage.class.getName() ;
+            String pigStorage = PigStorage.class.getName() + "('\\t','-noschema')" ;
     
             LOLoad load1 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
             
             LOLoad load2 =  new LOLoad(
                     new FileSpec("pi", new FuncSpec(pigStorage)),
-                    null, plan, null
+                    null, plan, new Configuration(ConfigurationUtil.toConfiguration(pc.getFs().getConfiguration()))
             );
     
             // schema for input#1

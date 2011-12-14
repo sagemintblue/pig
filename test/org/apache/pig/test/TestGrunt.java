@@ -17,6 +17,8 @@
  */
 package org.apache.pig.test;
 
+import static org.junit.Assert.*;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -53,8 +55,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Properties;
 
-@RunWith(JUnit4.class)
-public class TestGrunt extends TestCase {
+public class TestGrunt {
  
     static MiniCluster cluster = MiniCluster.buildCluster();
     private String basedir = "test/org/apache/pig/test/data";
@@ -69,13 +70,13 @@ public class TestGrunt extends TestCase {
         cluster.shutDown();
     }
         
-/*    
+   
     @Test 
     public void testCopyFromLocal() throws Throwable {
         PigServer server = new PigServer(ExecType.MAPREDUCE, cluster.getProperties());
         PigContext context = server.getPigContext();
         
-        String strCmd = "copyFromLocal /bin/sh . ;";
+        String strCmd = "copyFromLocal /bin/sh sh_copy ;";
         
         ByteArrayInputStream cmd = new ByteArrayInputStream(strCmd.getBytes());
         InputStreamReader reader = new InputStreamReader(cmd);
@@ -84,7 +85,7 @@ public class TestGrunt extends TestCase {
     
         grunt.exec();
     }
-*/
+
     
     @Test 
     public void testDefine() throws Throwable {
@@ -522,7 +523,7 @@ public class TestGrunt extends TestCase {
 
     @Test
     public void testIllustrateScript() throws Throwable {
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -538,7 +539,7 @@ public class TestGrunt extends TestCase {
 
     @Test
     public void testIllustrateScript2() throws Throwable {
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -554,7 +555,7 @@ public class TestGrunt extends TestCase {
     
     @Test
     public void testIllustrateScript3() throws Throwable {
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -571,7 +572,7 @@ public class TestGrunt extends TestCase {
     @Test
     public void testIllustrateScript4() throws Throwable {
         // empty line/field test
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -588,7 +589,7 @@ public class TestGrunt extends TestCase {
     @Test
     public void testIllustrateScript5() throws Throwable {
         // empty line/field test
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -605,7 +606,7 @@ public class TestGrunt extends TestCase {
     @Test
     public void testIllustrateScript6() throws Throwable {
         // empty line/field test
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -622,7 +623,7 @@ public class TestGrunt extends TestCase {
     @Test
     public void testIllustrateScript7() throws Throwable {
         // empty line/field test
-        PigServer server = new PigServer(ExecType.LOCAL, cluster.getProperties());
+        PigServer server = new PigServer(ExecType.LOCAL, new Properties());
         PigContext context = server.getPigContext();
         
         String strCmd = "illustrate -script "
@@ -1195,7 +1196,7 @@ public class TestGrunt extends TestCase {
         }
     }
     
-    /*
+
     // Test case for PIG-740 to report an error near the double quotes rather
     // than an unrelated EOF error message
     @Test
@@ -1212,10 +1213,10 @@ public class TestGrunt extends TestCase {
         Grunt grunt = new Grunt(new BufferedReader(reader), context);
 
         try {
-        grunt.exec();
-        } catch(Error e) {
+            grunt.exec();
+        } catch(FrontendException e) {
             e.printStackTrace();
-            assertTrue(e.getMessage().contains("Encountered: \"^\" (94), after : \"\\\"\""));
+            assertTrue(e.getMessage().contains("Error during parsing. <line 2, column 49>  Unexpected character '\"'"));
         }
     }
     
@@ -1259,7 +1260,7 @@ public class TestGrunt extends TestCase {
             msgs.add(c + " statement is ignored while processing " +
                     "'explain -script' or '-check'");
         }
-        msgs.add("Error during parsing");
+        msgs.add("Syntax error");
         validate(query, false, msgs.toArray(new String[0]));
     }
     
@@ -1279,7 +1280,7 @@ public class TestGrunt extends TestCase {
             msgs.add(c + " statement is ignored while processing " +
                     "'explain -script' or '-check'");
         }
-        msgs.add("In alias b, incompatible types in EqualTo Operator");
+        msgs.add("incompatible types in Equal Operator");
         validate(query, false, msgs.toArray(new String[0]));
     }
     
@@ -1307,7 +1308,7 @@ public class TestGrunt extends TestCase {
                     pri.stderrContents.contains("syntax OK"));
         }
     }
-    */
+
     @Test
     public void testSet() throws Throwable {
 

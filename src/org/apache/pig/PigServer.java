@@ -83,6 +83,7 @@ import org.apache.pig.newplan.logical.expression.LogicalExpressionVisitor;
 import org.apache.pig.newplan.logical.expression.ScalarExpression;
 import org.apache.pig.newplan.logical.optimizer.AllExpressionVisitor;
 import org.apache.pig.newplan.logical.optimizer.LogicalPlanOptimizer;
+import org.apache.pig.newplan.logical.optimizer.SchemaResetter;
 import org.apache.pig.newplan.logical.relational.LOForEach;
 import org.apache.pig.newplan.logical.relational.LOLoad;
 import org.apache.pig.newplan.logical.relational.LOStore;
@@ -1232,17 +1233,17 @@ public class PigServer {
         if( jobPriority != null ) {
             pigContext.getProperties().setProperty( PigContext.JOB_PRIORITY, jobPriority );
         }
-        
-       currDAG.compile();
+       
+        // In this plan, all stores in the plan will be executed. They should be ignored if the plan is reused.
+        currDAG.countExecutedStores();
+       
+        currDAG.compile();
 
         if( currDAG.lp.size() == 0 ) {
             return PigStatsUtil.getEmptyPigStats();
         }
-
-        PigStats stats = executeCompiledLogicalPlan();
         
-        // At this point, all stores in the plan are executed. They should be ignored if the plan is reused.
-        currDAG.executed();
+        PigStats stats = executeCompiledLogicalPlan();
         
         return stats;
     }
@@ -1359,9 +1360,9 @@ public class PigServer {
         };
 
         /**
-         * Call back method for post execution processing.
+         * Call back method for counting executed stores.
          */
-        private void executed() {
+        private void countExecutedStores() {
             for( Operator sink : lp.getSinks() ) {
                 if( sink instanceof LOStore ) {
                     processedStores++;
@@ -1613,7 +1614,6 @@ public class PigServer {
         }
         
         private void compile(LogicalPlan lp) throws FrontendException  {
-            new ProjStarInUdfExpander(lp).visit();
             new ColumnAliasConversionVisitor( lp ).visit();
             new SchemaAliasVisitor( lp ).visit();
             new ScalarVisitor( lp, pigContext ).visit();

@@ -58,6 +58,7 @@ import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOpe
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLocalRearrange;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POMergeCogroup;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POMergeJoin;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POPartialAgg;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POSkewedJoin;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POSort;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POSplit;
@@ -131,6 +132,7 @@ public class ScriptState {
     static enum PIG_FEATURE {
         UNKNOWN,
         MERGE_JION,
+        MERGE_SPARSE_JION,
         REPLICATED_JOIN,
         SKEWED_JOIN,
         HASH_JOIN,
@@ -150,7 +152,8 @@ public class ScriptState {
         LIMIT,
         UNION,
         COMBINER,
-        NATIVE;
+        NATIVE,
+        MAP_PARTIALAGG;
     };
     
     /**
@@ -574,7 +577,10 @@ public class ScriptState {
         
         @Override
         public void visitMergeJoin(POMergeJoin join) throws VisitorException {
-            feature.set(PIG_FEATURE.MERGE_JION.ordinal());
+            if (join.getJoinType()==LOJoin.JOINTYPE.MERGESPARSE)
+                feature.set(PIG_FEATURE.MERGE_SPARSE_JION.ordinal());
+            else
+                feature.set(PIG_FEATURE.MERGE_JION.ordinal());
         }
         
         @Override
@@ -607,7 +613,13 @@ public class ScriptState {
         @Override
         public void visitDemux(PODemux demux) throws VisitorException {
             feature.set(PIG_FEATURE.MULTI_QUERY.ordinal());         
-        }        
+        }
+        
+        @Override
+        public void visitPartialAgg(POPartialAgg partAgg){
+            feature.set(PIG_FEATURE.MAP_PARTIALAGG.ordinal());
+        }
+        
     }    
     
     static class LogicalPlanFeatureVisitor extends LogicalRelationalNodesVisitor {
@@ -660,6 +672,8 @@ public class ScriptState {
                 feature.set(PIG_FEATURE.HASH_JOIN.ordinal());
             } else if (op.getJoinType() == JOINTYPE.MERGE) {
                 feature.set(PIG_FEATURE.MERGE_JION.ordinal());
+            } else if (op.getJoinType() == JOINTYPE.MERGESPARSE) {
+                feature.set(PIG_FEATURE.MERGE_SPARSE_JION.ordinal());
             } else if (op.getJoinType() == JOINTYPE.REPLICATED) {
                 feature.set(PIG_FEATURE.REPLICATED_JOIN.ordinal());
             } else if (op.getJoinType() == JOINTYPE.SKEWED) {

@@ -789,12 +789,7 @@ public class TestLogicalPlanBuilder {
     public void testQueryFail67() throws Exception {
         String q = " a = load 'input1' as (name, age, gpa);" +
         " b = foreach a generate age, age * 10L, gpa/0.2f, {16, 4.0e-2, 'hello'};";
-        try {
-            buildPlan(q);
-        } catch (AssertionFailedError e) {
-            return;
-        }
-        Assert.fail( "query should fail" );
+        buildPlan(q);
     }
     
     @Test
@@ -2082,6 +2077,19 @@ public class TestLogicalPlanBuilder {
         op = plan.getSinks().get(0);
         load = (LOLoad)plan.getPredecessors(op).get(0);
         Assert.assertTrue(((PigStorageWithSchema)(load).getLoadFunc()).getUDFContextSignature().equals("b"));
+    }
+    
+    @Test
+    public void testLastAlias() throws Exception {
+        try {
+            String query = "B = load '2.txt' as (b0:int, b1:int);\n" +
+            		"C = ORDER B by b0;" ;
+            buildPlan( query );
+            
+        } catch (AssertionFailedError e) {
+            // Ignore the exception
+        }
+        Assert.assertEquals("C", pigServer.getPigContext().getLastAlias());
     }
 
     private void printPlan(LogicalExpressionPlan lp) {

@@ -25,18 +25,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
-import org.junit.Test;
+import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import org.apache.pig.PigServer;
 import org.apache.pig.ExecType;
+import org.apache.pig.PigServer;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.PigContext;
+import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.newplan.Operator;
 import org.apache.pig.newplan.logical.expression.ConstantExpression;
 import org.apache.pig.newplan.logical.expression.LogicalExpressionPlan;
 import org.apache.pig.newplan.logical.relational.LOFilter;
 import org.apache.pig.newplan.logical.relational.LogicalPlan;
+import org.junit.Test;
 
 public class TestPigScriptParser extends TestCase {
 
@@ -125,6 +127,40 @@ public class TestPigScriptParser extends TestCase {
             Tuple t = it.next();
             assertEquals(expectedResults[i++], t.get(0));
         }
+    }
+    
+   @Test
+	public void testSplitWithNotEvalCondition() throws Exception {
+	    String defineQ = "define minelogs org.apache.pig.test.RegexGroupCount('www\\\\.xyz\\\\.com/sports');";
+	    String defineL = "a = load 'nosuchfile' " +
+	            " using PigStorage() as (source : chararray);";
+	    String defineSplit = "SPLIT a INTO a1 IF (minelogs(source) > 0 ), a2 IF (NOT (minelogs(source)>0));";//    (NOT ( minelogs(source) ) > 0) ;";
+	    PigServer ps = new PigServer(ExecType.LOCAL);
+	    ps.registerQuery(defineQ);
+	    ps.registerQuery(defineL);
+	    try{
+	        ps.registerQuery(defineSplit);
+	    }catch(FrontendException e)
+	    {
+	        Assert.fail(e.getMessage());	
+	    }
+	}
+
+    
+    @Test
+    public void testErrorMessageUndefinedAliasInGroupByStatement() throws Exception {
+        String queryA = "A = load 'nosuchfile'  using PigStorage() as (f1:chararray,f2:chararray);";
+        String queryB = "B = GROUP B by f1;";
+        PigServer ps = new PigServer(ExecType.LOCAL);
+        ps.registerQuery(queryA);
+        try{
+            ps.registerQuery(queryB);
+        }catch (FrontendException e)
+        {
+            Assert.assertTrue(e.getMessage().contains("Undefined alias:"));
+            return;
+        }
+        Assert.fail();
     }
     
 	private void checkParsedConstContent(PigServer pigServer,

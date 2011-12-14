@@ -26,15 +26,18 @@ import java.util.Stack;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PigLogger;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PigProgressable;
+import org.apache.pig.builtin.OutputSchema;
 import org.apache.pig.classification.InterfaceAudience;
 import org.apache.pig.classification.InterfaceStability;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.PigContext;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PigLogger;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PigProgressable;
+import org.apache.pig.impl.util.UDFContext;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
 
 
 /**
@@ -69,7 +72,7 @@ public abstract class EvalFunc<T>  {
      * should be logged to this via {@link PigLogger#warn}.
      */
     protected PigLogger pigLogger;
-
+    
     private static int nextSchemaId; // for assigning unique ids to UDF columns
     protected String getSchemaName(String name, Schema input) {
         String alias = name + "_";
@@ -212,11 +215,20 @@ public abstract class EvalFunc<T>  {
      * Report the schema of the output of this UDF.  Pig will make use of
      * this in error checking, optimization, and planning.  The schema
      * of input data to this UDF is provided.
+     * <p>
+     * The default implementation interprets the {@link OutputSchema} annotation,
+     * if one is present. Otherwise, it returns <code>null</code> (no known output schema).
+     *
      * @param input Schema of the input
      * @return Schema of the output
      */
     public Schema outputSchema(Schema input) {
-        return null;
+        OutputSchema schema = this.getClass().getAnnotation(OutputSchema.class);
+        try {
+            return (schema == null) ? null : Utils.getSchemaFromString(schema.value());
+        } catch (ParserException e) {
+            throw new RuntimeException(e);
+        }
     }
     
     /**
@@ -292,5 +304,33 @@ public abstract class EvalFunc<T>  {
     
     public Log getLogger() {
     	return log;
+    }
+    
+    private Schema inputSchemaInternal=null;
+    /**
+     * This method will be called by Pig both in the front end and back end to
+     * pass a unique signature to the {@link EvalFunc}. The signature can be used
+     * to store into the {@link UDFContext} any information which the 
+     * {@link EvalFunc} needs to store between various method invocations in the
+     * front end and back end.
+     * @param signature a unique signature to identify this EvalFunc
+     */
+    public void setUDFContextSignature(String signature) {
+    }
+    
+    /**
+     * This method is for internal use. It is called by Pig core in both front-end 
+     * and back-end to setup the right input schema for EvalFunc
+     */
+    public void setInputSchema(Schema input){
+    	this.inputSchemaInternal=input;
+    }
+    	
+    /**
+     * This method is intended to be called by the user in {@link EvalFunc} to get the input
+     * schema of the EvalFunc
+     */
+    public Schema getInputSchema(){
+    	return this.inputSchemaInternal;
     }
 }

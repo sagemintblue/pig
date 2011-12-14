@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -66,8 +67,13 @@ tokens {
     MACRO_BODY;
     MACRO_INLINE;
     NULL;
+    TRUE;
+    FALSE;
     IDENTIFIER;
     ANY;
+    TOBAG;
+    TOMAP;
+    TOTUPLE;
 }
 
 @header {
@@ -159,7 +165,7 @@ inline_statement : inline_clause SEMI_COLON!
 split_statement : split_clause SEMI_COLON!
 ;
 
-general_statement : ( alias EQUAL )? op_clause parallel_clause? SEMI_COLON 
+general_statement : ( alias EQUAL )? (op_clause parallel_clause? | LEFT_PAREN op_clause parallel_clause? RIGHT_PAREN) SEMI_COLON 
                  -> ^( STATEMENT alias? op_clause parallel_clause? )
 ;
 
@@ -178,7 +184,8 @@ foreach_complex_statement : ( alias EQUAL )? foreach_clause_complex SEMI_COLON?
                          -> ^( STATEMENT alias? foreach_clause_complex )
 ;
 
-foreach_simple_statement : ( alias EQUAL )? foreach_clause_simple parallel_clause? SEMI_COLON
+foreach_simple_statement : ( alias EQUAL )? (foreach_clause_simple parallel_clause? 
+                                                | LEFT_PAREN foreach_clause_simple parallel_clause? RIGHT_PAREN) SEMI_COLON
                         -> ^( STATEMENT alias? foreach_clause_simple parallel_clause? )
 ;
 
@@ -190,6 +197,7 @@ parameter
     | INTEGER 
     | DOUBLENUMBER
     | QUOTEDSTRING
+    | DOLLARVAR
 ;
 
 content : LEFT_CURLY ( content | ~(LEFT_CURLY | RIGHT_CURLY) )* RIGHT_CURLY
@@ -297,7 +305,7 @@ field_def_list : field_def ( COMMA field_def )*
 type : simple_type | tuple_type | bag_type | map_type
 ;
 
-simple_type : INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY
+simple_type : BOOLEAN | INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY
 ;
 
 tuple_type : TUPLE? LEFT_PAREN field_def_list? RIGHT_PAREN
@@ -350,7 +358,7 @@ flatten_generated_item : flatten_clause ( AS! ( field_def | ( LEFT_PAREN! field_
                        | expr ( AS! field_def )?
                        | STAR ( AS! ( field_def | ( LEFT_PAREN! field_def_list RIGHT_PAREN! ) ) )?
 ;
-
+	
 flatten_clause : FLATTEN^ LEFT_PAREN! expr RIGHT_PAREN!
 ;
 
@@ -370,10 +378,10 @@ and_cond : unary_cond ( AND^ unary_cond )*
 ;
 
 unary_cond : LEFT_PAREN! cond RIGHT_PAREN!
+           | not_cond
            | expr rel_op^ expr
            | func_eval
            | null_check_cond
-           | not_cond
 ;
 
 not_cond : NOT^ unary_cond
@@ -430,7 +438,15 @@ expr_eval : const_expr | var_expr
 var_expr : projectable_expr ( dot_proj | pound_proj )*
 ;
 
-projectable_expr: func_eval | col_ref | bin_expr
+projectable_expr: func_eval | col_ref | bin_expr | type_conversion
+;
+
+type_conversion : LEFT_CURLY real_arg_list RIGHT_CURLY 
+               -> ^( FUNC_EVAL TOBAG real_arg_list )
+               | LEFT_BRACKET real_arg_list RIGHT_BRACKET 
+               -> ^( FUNC_EVAL TOMAP real_arg_list )
+               | LEFT_PAREN real_arg ( COMMA real_arg )+ RIGHT_PAREN // to disable convertion on 1 element tuples
+               -> ^( FUNC_EVAL TOTUPLE real_arg+ )
 ;
 
 dot_proj : PERIOD ( col_alias_or_index 
@@ -570,6 +586,7 @@ nested_op : nested_filter
           | nested_distinct
           | nested_limit
           | nested_cross
+          | nested_foreach
 ;
 
 nested_proj : col_ref PERIOD col_ref_list
@@ -595,6 +612,9 @@ nested_limit : LIMIT^ nested_op_input ( (INTEGER SEMI_COLON) => INTEGER | expr )
 nested_cross : CROSS^ nested_op_input_list
 ;
 
+nested_foreach: FOREACH^ nested_op_input generate_clause
+;
+
 nested_op_input : col_ref | nested_proj
 ;
 
@@ -608,12 +628,16 @@ stream_clause : STREAM^ rel THROUGH! ( EXECCOMMAND | alias ) as_clause?
 mr_clause : MAPREDUCE^ QUOTEDSTRING ( LEFT_PAREN! path_list RIGHT_PAREN! )? store_clause load_clause EXECCOMMAND?
 ;
 
-split_clause : SPLIT rel INTO split_branch ( COMMA split_branch )+
-            -> ^( SPLIT rel split_branch+ )
+split_clause : SPLIT rel INTO split_branch ( ( COMMA split_branch )+ | ( ( COMMA split_branch )* COMMA split_otherwise ) )
+            -> ^( SPLIT rel split_branch+ split_otherwise?)
 ;
 
 split_branch : alias IF cond
             -> ^( SPLIT_BRANCH alias cond )
+;
+
+split_otherwise : alias OTHERWISE
+            -> ^( OTHERWISE alias )
 ;
 
 col_ref : alias_col_ref | dollar_col_ref
@@ -632,7 +656,7 @@ literal : scalar | map | bag | tuple
 ;
 
 
-scalar : num_scalar | QUOTEDSTRING | null_keyword
+scalar : num_scalar | QUOTEDSTRING | null_keyword | TRUE | FALSE
 ;
 
 num_scalar : MINUS? ( INTEGER | LONGINTEGER | FLOATNUMBER | DOUBLENUMBER )
@@ -696,6 +720,7 @@ eid : rel_str_op
     | FLATTEN
     | ASC
     | DESC
+    | BOOL
     | INT
     | LONG
     | FLOAT
@@ -724,6 +749,8 @@ eid : rel_str_op
     | FULL
     | identifier
     | null_keyword
+    | TRUE
+    | FALSE
 ;
 
 // relational operator

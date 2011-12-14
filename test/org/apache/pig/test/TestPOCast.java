@@ -18,24 +18,31 @@
 package org.apache.pig.test;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 
+import junit.framework.TestCase;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.pig.ExecType;
 import org.apache.pig.FuncSpec;
 import org.apache.pig.LoadCaster;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceSchema.ResourceFieldSchema;
-import org.apache.pig.backend.datastorage.DataStorage;
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.POCast;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.POProject;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
+import org.apache.pig.builtin.BinStorage;
+import org.apache.pig.builtin.PigStorage;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -44,24 +51,13 @@ import org.apache.pig.data.DefaultBagFactory;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.io.BufferedPositionedInputStream;
-import org.apache.pig.impl.plan.OperatorKey;
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.POCast;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOperators.POProject;
+import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.PlanException;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 import org.apache.pig.test.utils.GenRandomData;
-import org.apache.pig.builtin.PigStorage;
-import org.apache.pig.builtin.BinStorage;
 import org.junit.Test;
-
-import junit.framework.TestCase;
 
 public class TestPOCast extends TestCase {
 
@@ -72,12 +68,191 @@ public class TestPOCast extends TestCase {
 	DataBag dummyBag = null;
 	
 	@Test
+	public void testBooleanToOther() throws IOException {
+	    //Create data
+        DataBag bag = BagFactory.getInstance().newDefaultBag();
+        for(int i = 0; i < MAX; i++) {
+            Tuple t = TupleFactory.getInstance().newTuple();
+            t.append(r.nextBoolean());
+            bag.add(t);
+        }
+        
+        POCast op = new POCast(new OperatorKey("", r.nextLong()), -1);
+        LoadFunc load = new TestLoader();
+        op.setFuncSpec(new FuncSpec(load.getClass().getName()));
+        POProject prj = new POProject(new OperatorKey("", r.nextLong()), -1, 0);
+        PhysicalPlan plan = new PhysicalPlan();
+        plan.add(prj);
+        plan.add(op);
+        plan.connect(prj, op);
+        
+        prj.setResultType(DataType.BOOLEAN);
+        
+        // Plan to test when result type is ByteArray and casting is requested
+        // for example casting of values coming out of map lookup.
+        POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
+        PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Boolean b = (Boolean) t.get(0);
+            Result res = op.getNext(b);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(b, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(b, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Integer i = ((Boolean) t.get(0)) ? Integer.valueOf(1) : Integer.valueOf(0);
+            Result res = op.getNext(i);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(i, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(i);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(i, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Long l = ((Boolean) t.get(0)) ? Long.valueOf(1L) : Long.valueOf(0L);
+            Result res = op.getNext(l);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(l, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(l);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(l, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Float f = ((Boolean) t.get(0)) ? Float.valueOf(1.0F) : Float.valueOf(0.0F);
+            Result res = op.getNext(f);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(f, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(f);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(f, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Double d = ((Boolean) t.get(0)) ? Double.valueOf(1.0D) : Double.valueOf(0.0D);
+            Result res = op.getNext(d);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(d, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(d);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(d, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            String str = ((Boolean)t.get(0)).toString();
+            Result res = op.getNext(str);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(str, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(str);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(str, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            DataByteArray dba = new DataByteArray(((Boolean)t.get(0)).toString().getBytes());
+            Result res = op.getNext(dba);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(dba, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(dba);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(dba, res.result);
+            }
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Map map = null;
+            Result res = op.getNext(map);
+            assertEquals(POStatus.STATUS_ERR, res.returnStatus);
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Result res = op.getNext(t);
+            assertEquals(POStatus.STATUS_ERR, res.returnStatus);
+        }
+        
+        for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            DataBag b = null;
+            Result res = op.getNext(b);
+            assertEquals(POStatus.STATUS_ERR, res.returnStatus);
+        }
+        {
+            planToTestBACasts.attachInput(dummyTuple);
+            try{
+                opWithInputTypeAsBA.getNext(dummyMap);
+            }catch (Exception e) {
+                assertEquals(ExecException.class, e.getClass());
+            }
+        }
+        {
+            planToTestBACasts.attachInput(dummyTuple);
+            try{
+                opWithInputTypeAsBA.getNext(dummyTuple);
+            }catch (Exception e) {
+                assertEquals(ExecException.class, e.getClass());
+            }
+        }
+        {
+            planToTestBACasts.attachInput(dummyTuple);
+            try{
+                opWithInputTypeAsBA.getNext(dummyBag);
+            }catch (Exception e) {
+                assertEquals(ExecException.class, e.getClass());
+            }
+        }
+	}
+	
+	@Test
 	public void testIntegerToOther() throws IOException {
 		//Create data
 		DataBag bag = BagFactory.getInstance().newDefaultBag();
 		for(int i = 0; i < MAX; i++) {
 			Tuple t = TupleFactory.getInstance().newTuple();
-			t.append(r.nextInt());
+			t.append(i == 0 ? 0 : r.nextInt());
 			bag.add(t);
 		}
 		
@@ -95,7 +270,22 @@ public class TestPOCast extends TestCase {
 		// for example casting of values coming out of map lookup.
 		POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
-		
+
+        for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Boolean b = Boolean.valueOf((Integer) t.get(0) != 0);
+            Result res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(b, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(b, res.result);
+            }
+        }
+
 		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
 			Tuple t = it.next();
 			plan.attachInput(t);
@@ -240,7 +430,7 @@ public class TestPOCast extends TestCase {
 		DataBag bag = BagFactory.getInstance().newDefaultBag();
 		for(int i = 0; i < MAX; i++) {
 			Tuple t = TupleFactory.getInstance().newTuple();
-			t.append(r.nextLong());
+			t.append(i == 0 ? 0L : r.nextLong());
 			bag.add(t);
 		}
 		
@@ -259,7 +449,24 @@ public class TestPOCast extends TestCase {
 		// for example casting of values coming out of map lookup.
 		POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
-		
+
+        for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Boolean b = Boolean.valueOf(((Long) t.get(0)) != 0L);
+            Result res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                // System.out.println(res.result + " : " + i);
+                assertEquals(b, res.result);
+            }
+
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(b, res.result);
+
+        }
+
 		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
 			Tuple t = it.next();
 			plan.attachInput(t);
@@ -411,7 +618,7 @@ public class TestPOCast extends TestCase {
 		DataBag bag = BagFactory.getInstance().newDefaultBag();
 		for(int i = 0; i < MAX; i++) {
 			Tuple t = TupleFactory.getInstance().newTuple();
-			t.append(r.nextFloat());
+			t.append(i == 0 ? 0.0F : r.nextFloat());
 			bag.add(t);
 		}
 		
@@ -430,6 +637,21 @@ public class TestPOCast extends TestCase {
 		// for example casting of values coming out of map lookup.
 		POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
+		
+		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Boolean b = Boolean.valueOf(((Float) t.get(0)) != 0.0F);
+            Result res = op.getNext(b);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                //System.out.println(res.result + " : " + i);
+                assertEquals(b, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if(res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(b, res.result);
+        }
 		
 		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
 			Tuple t = it.next();
@@ -586,7 +808,7 @@ public class TestPOCast extends TestCase {
 		DataBag bag = BagFactory.getInstance().newDefaultBag();
 		for(int i = 0; i < MAX; i++) {
 			Tuple t = TupleFactory.getInstance().newTuple();
-			t.append(r.nextDouble());
+			t.append(i == 0 ? 0.0D : r.nextDouble());
 			bag.add(t);
 		}
 		
@@ -605,7 +827,22 @@ public class TestPOCast extends TestCase {
 		// for example casting of values coming out of map lookup.
 		POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
-		
+
+        for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            Boolean b = Boolean.valueOf(((Double) t.get(0)) != 0.0D);
+            Result res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                // System.out.println(res.result + " : " + i);
+                assertEquals(b, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(b, res.result);
+        }
+
 		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
 			Tuple t = it.next();
 			plan.attachInput(t);
@@ -763,6 +1000,41 @@ public class TestPOCast extends TestCase {
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
 		
 		TupleFactory tf = TupleFactory.getInstance();
+		
+        {
+            Tuple t = tf.newTuple();
+            t.append((new Boolean(r.nextBoolean())).toString());
+            plan.attachInput(t);
+            String str = (String) t.get(0);
+            Boolean b = null;
+            if (str.equalsIgnoreCase("true")) {
+                b = Boolean.TRUE;
+            } else if (str.equalsIgnoreCase("false")) {
+                b = Boolean.FALSE;
+            }
+            Result res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                // System.out.println(res.result + " : " + i);
+                assertEquals(b, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(b, res.result);
+
+            t = tf.newTuple();
+            t.append("neither true nor false");
+            plan.attachInput(t);
+            res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                // System.out.println(res.result + " : " + i);
+                assertEquals(null, res.result);
+            }
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(null, res.result);
+        }
 		
 		{
 			Tuple t = tf.newTuple();
@@ -930,9 +1202,18 @@ public class TestPOCast extends TestCase {
         public Boolean bytesToBoolean(byte[] b) throws IOException {
             DataByteArray dba = new DataByteArray(b);
             String str = dba.toString();
+            /*
             if(str.length() == 0)
                 return new Boolean(false);
             else return new Boolean(true);
+            */
+            if (str.equalsIgnoreCase("true")) {
+                return Boolean.TRUE;
+            } else if (str.equalsIgnoreCase("false")) {
+                return Boolean.FALSE;
+            } else {
+                return null;
+            }
         }
         
         public String bytesToCharArray(byte[] b) throws IOException {
@@ -991,6 +1272,10 @@ public class TestPOCast extends TestCase {
         public byte[] toBytes(Long l) throws IOException {
             return l.toString().getBytes();
         }
+
+        public byte[] toBytes(Boolean b) throws IOException {
+            return b.toString().getBytes();
+        }
         
 	    public byte[] toBytes(Map<String, Object> m) throws IOException {
 	        return null;
@@ -1048,6 +1333,31 @@ public class TestPOCast extends TestCase {
 		// for example casting of values coming out of map lookup.
 		POCast opWithInputTypeAsBA = new POCast(new OperatorKey("", r.nextLong()), -1);
 		PhysicalPlan planToTestBACasts = constructPlan(opWithInputTypeAsBA);
+        {
+            Tuple t = tf.newTuple();
+            t.append(new DataByteArray((new Boolean(r.nextBoolean())).toString()
+                    .getBytes()));
+            plan.attachInput(t);
+            String str = ((DataByteArray) t.get(0)).toString();
+            Boolean b = null;
+            if (str.equalsIgnoreCase("true")) {
+                b = Boolean.TRUE;
+            } else if (str.equalsIgnoreCase("false")) {
+                b = Boolean.FALSE;
+            }
+            Result res = op.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                // System.out.println(res.result + " : " + i);
+                assertEquals(b, res.result);
+            }
+
+            planToTestBACasts.attachInput(t);
+            res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK)
+                assertEquals(b, res.result);
+
+        }
+
 		{
 			Tuple t = tf.newTuple();
 			t.append(new DataByteArray((new Integer(r.nextInt())).toString().getBytes()));
@@ -1223,6 +1533,32 @@ public class TestPOCast extends TestCase {
         POCast op = new POCast(new OperatorKey("", r.nextLong()), -1);
         PhysicalPlan plan = constructPlan(op);
         TupleFactory tf = TupleFactory.getInstance();
+        
+        {
+            // create a new POCast each time since we 
+            // maintain a state variable per POCast object
+            // indicating if cast is really required
+            POCast newOp = new POCast(new OperatorKey("", r.nextLong()), -1);
+            plan = constructPlan(newOp);
+            Tuple t = tf.newTuple();
+            Boolean input = new Boolean(r.nextBoolean());
+            t.append(input);
+            plan.attachInput(t);
+            Result res = newOp.getNext((Boolean) null);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                //System.out.println(res.result + " : " + i);
+                assertEquals(input, res.result);
+            }
+            
+            t = tf.newTuple();
+            t.append("neither true nor false");
+            plan.attachInput(t);
+            res = newOp.getNext((Boolean) null);
+            if(res.returnStatus == POStatus.STATUS_OK) {
+                //System.out.println(res.result + " : " + i);
+                assertEquals(null, res.result);
+            }
+        }
         
         {
             Tuple t = tf.newTuple();
@@ -1483,9 +1819,46 @@ public class TestPOCast extends TestCase {
             
             assertTrue(res.result==null);
         }
+        
+        {
+            //positive test case
+            Tuple t = tf.newTuple();
+            Tuple wrappedTuple = tf.newTuple();
+            wrappedTuple.append(GenRandomData.genRandString(r));
+            wrappedTuple.append(GenRandomData.genRandString(r));
+            t.append(wrappedTuple);
+            Schema s = Utils.getSchemaFromString("t:tuple(a:chararray, b:chararray)");
+            op.setFieldSchema(new ResourceSchema.ResourceFieldSchema(s.getField(0)));
+            plan.attachInput(t);
+            Tuple tup = null;
+            Result res = op.getNext(tup);
+            verifyResult(res, POStatus.STATUS_OK, wrappedTuple);
+        }
+
+        {
+            //test case trying with null inside tuple
+            Tuple t = tf.newTuple();
+            Tuple wrappedTuple = tf.newTuple();
+            wrappedTuple.append(GenRandomData.genRandString(r));
+            wrappedTuple.append(null);//NULL col inside tuple
+            t.append(wrappedTuple);
+            Schema s = Utils.getSchemaFromString("t:tuple(a:chararray, b:chararray)");
+            op.setFieldSchema(new ResourceSchema.ResourceFieldSchema(s.getField(0)));
+            plan.attachInput(t);
+            Tuple tup = null;
+            Result res = op.getNext(tup);
+            verifyResult(res, POStatus.STATUS_OK, wrappedTuple);
+        }
+	
+	
 	}
 	
-	@Test
+	private void verifyResult(Result res, byte status, Object result) {
+        assertEquals("result status", status, res.returnStatus);
+        assertEquals("result value", result, res.result);        
+    }
+
+    @Test
 	public void testBagToOther() throws IOException, ParserException {
 		POCast op = new POCast(new OperatorKey("", r.nextLong()), -1);
 		op.setFuncSpec(new FuncSpec(PigStorage.class.getName()));
@@ -1595,7 +1968,7 @@ public class TestPOCast extends TestCase {
 		
         {
             Tuple t = tf.newTuple();
-            t.append(GenRandomData.genRandSmallTupDataBag(r, 1, 100));
+            t.append(GenRandomData.genRandSmallTupDataBagWithNulls(r, 20, 100));
             Schema s = Utils.getSchemaFromString("b:bag{t:tuple(a:chararray, b:float)}");
             op.setFieldSchema(new ResourceSchema.ResourceFieldSchema(s.getField(0)));
             plan.attachInput(t);
@@ -1607,16 +1980,22 @@ public class TestPOCast extends TestCase {
             while(expectedBagIterator.hasNext()) {
                 Tuple expectedBagTuple = expectedBagIterator.next();
                 Tuple convertedBagTuple = convertedBagIterator.next();
-                assertTrue(convertedBagTuple.get(0) instanceof String);
-                assertTrue(convertedBagTuple.get(1) instanceof Float);
-                assertTrue(expectedBagTuple.get(0).equals(convertedBagTuple.get(0)));
-                assertTrue(((Float)(expectedBagTuple.get(1))).floatValue()==(Float)(convertedBagTuple.get(1)));
+                if(expectedBagTuple.get(0) != null){
+                    assertTrue(convertedBagTuple.get(0) instanceof String);
+                    assertTrue(expectedBagTuple.get(0).equals(convertedBagTuple.get(0)));
+                }
+                if(expectedBagTuple.get(1) != null){
+                    assertTrue(convertedBagTuple.get(1) instanceof Float);
+                    assertTrue(((Float)(expectedBagTuple.get(1))).floatValue()==(Float)(convertedBagTuple.get(1)));
+                }
+                
+
             }
         }
         
         {
             Tuple t = tf.newTuple();
-            t.append(GenRandomData.genRandSmallTupDataBag(r, 1, 100));
+            t.append(GenRandomData.genRandSmallTupDataBagWithNulls(r, 20, 100));
             Schema s = Utils.getSchemaFromString("b:bag{}");
             op.setFieldSchema(new ResourceSchema.ResourceFieldSchema(s.getField(0)));
             plan.attachInput(t);
@@ -1628,10 +2007,17 @@ public class TestPOCast extends TestCase {
             while(expectedBagIterator.hasNext()) {
                 Tuple expectedBagTuple = expectedBagIterator.next();
                 Tuple convertedBagTuple = convertedBagIterator.next();
-                assertTrue(convertedBagTuple.get(0) instanceof String);
-                assertTrue(convertedBagTuple.get(1) instanceof Integer);
-                assertTrue(expectedBagTuple.get(0).equals(convertedBagTuple.get(0)));
-                assertTrue(((Integer)(expectedBagTuple.get(1)))==(Integer)(convertedBagTuple.get(1)));
+                
+                if(expectedBagTuple.get(0) != null){
+                    assertTrue(convertedBagTuple.get(0) instanceof String);
+                    assertTrue(expectedBagTuple.get(0).equals(convertedBagTuple.get(0)));
+                }
+                
+                if(expectedBagTuple.get(1) != null){
+                    assertTrue(convertedBagTuple.get(1) instanceof Integer);
+                    assertTrue(((Integer)(expectedBagTuple.get(1)))==(Integer)(convertedBagTuple.get(1)));
+                }
+
             }
         }
 	}
@@ -1763,7 +2149,21 @@ public class TestPOCast extends TestCase {
 		plan.add(op);
 		plan.connect(prj, op);
 		
-		prj.setResultType(DataType.INTEGER);      
+        prj.setResultType(DataType.BOOLEAN);
+
+        for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
+            Tuple t = it.next();
+            plan.attachInput(t);
+            if (t.get(0) == null) {
+
+                Boolean result = (Boolean) op.getNext((Boolean) null).result;
+                assertEquals(null, result);
+
+            }
+
+        }
+
+        prj.setResultType(DataType.INTEGER); 
 		
 		for(Iterator<Tuple> it = bag.iterator(); it.hasNext(); ) {
 			Tuple t = it.next();
@@ -1849,13 +2249,15 @@ public class TestPOCast extends TestCase {
 		// Create a bag having tuples having values of different types.
 		for(int i = 0; i < MAX; i++) {
 			Tuple t = TupleFactory.getInstance().newTuple();
-			if(i % 4 == 0)
+			if (i % 5 == 0)
+			    t.append(r.nextBoolean());
+			if(i % 5 == 1)
 				t.append(r.nextInt());
-			if(i % 4 == 1)
+			if(i % 5 == 2)
 				t.append(r.nextLong());
-			if(i % 4 == 2)
+			if(i % 5 == 3)
 				t.append(r.nextDouble());
-			if(i % 4 == 3)
+			if(i % 5 == 4)
 				t.append(r.nextFloat());
 			bag.add(t);
 		}
@@ -1864,8 +2266,13 @@ public class TestPOCast extends TestCase {
 			Tuple t = it.next();
 			planToTestBACasts.attachInput(t);
 			Object toCast = t.get(0);
+            Boolean b = DataType.toBoolean(toCast);
+            Result res = opWithInputTypeAsBA.getNext(b);
+            if (res.returnStatus == POStatus.STATUS_OK) {
+                assertEquals(b, res.result);
+            }
 			Integer i = DataType.toInteger(toCast);
-			Result res = opWithInputTypeAsBA.getNext(i);
+			res = opWithInputTypeAsBA.getNext(i);
 			if(res.returnStatus == POStatus.STATUS_OK) {
 				assertEquals(i, res.result);
 			}

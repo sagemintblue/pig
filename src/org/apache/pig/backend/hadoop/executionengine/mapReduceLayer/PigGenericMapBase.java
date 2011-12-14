@@ -31,6 +31,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.pig.PigException;
 import org.apache.pig.backend.executionengine.ExecException;
@@ -55,7 +56,12 @@ import org.apache.pig.impl.util.SpillableMemoryManager;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.tools.pigstats.PigStatusReporter;
 
-public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable, Writable> {
+/**
+ * This class is the base class for PigMapBase, which has slightly
+ * difference among different versions of hadoop. PigMapBase implementation
+ * is located in $PIG_HOME/shims.
+**/
+public abstract class PigGenericMapBase extends Mapper<Text, Tuple, PigNullableWritable, Writable> {
     private static final Tuple DUMMYTUPLE = null;
 
     private final Log log = LogFactory.getLog(getClass());
@@ -118,14 +124,16 @@ public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable
             runPipeline(leaf);
         }
 
-        for (POStore store: stores) {
-            if (!initialized) {
-                MapReducePOStoreImpl impl 
-                    = new MapReducePOStoreImpl(context);
-                store.setStoreImpl(impl);
-                store.setUp();
+        if (!inIllustrator) {
+            for (POStore store: stores) {
+                if (!initialized) {
+                    MapReducePOStoreImpl impl 
+                        = new MapReducePOStoreImpl(context);
+                    store.setStoreImpl(impl);
+                    store.setUp();
+                }
+                store.tearDown();
             }
-            store.tearDown();
         }
         
         //Calling EvalFunc.finish()
@@ -158,7 +166,7 @@ public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable
         PigMapReduce.sJobContext = context;
         PigMapReduce.sJobConfInternal.set(context.getConfiguration());
         PigMapReduce.sJobConf = context.getConfiguration();
-        inIllustrator = (context instanceof IllustratorContext);
+        inIllustrator = inIllustrator(context);
         
         PigContext.setPackageImportList((ArrayList<String>)ObjectSerializer.deserialize(job.get("udf.import.list")));
         pigContext = (PigContext)ObjectSerializer.deserialize(job.get("pig.pigContext"));
@@ -221,12 +229,14 @@ public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable
             pigReporter.setRep(context);
             PhysicalOperator.setReporter(pigReporter);
            
-            for (POStore store: stores) {
-                MapReducePOStoreImpl impl 
-                    = new MapReducePOStoreImpl(context);
-                store.setStoreImpl(impl);
-                if (!pigContext.inIllustrator)
-                    store.setUp();
+            if (!inIllustrator) {
+                for (POStore store: stores) {
+                    MapReducePOStoreImpl impl 
+                        = new MapReducePOStoreImpl(context);
+                    store.setStoreImpl(impl);
+                    if (!pigContext.inIllustrator)
+                        store.setUp();
+                }
             }
             
             boolean aggregateWarning = "true".equalsIgnoreCase(pigContext.getProperties().getProperty("aggregate.warning"));
@@ -295,6 +305,8 @@ public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable
 
     abstract public void collect(Context oc, Tuple tuple) throws InterruptedException, IOException;
 
+    abstract public boolean inIllustrator(Context context);
+    
     /**
      * @return the keyType
      */
@@ -309,76 +321,7 @@ public abstract class PigMapBase extends Mapper<Text, Tuple, PigNullableWritable
         this.keyType = keyType;
     }
     
-    /**
-     * 
-     * Get mapper's illustrator context
-     * 
-     * @param conf  Configuration
-     * @param input Input bag to serve as data source
-     * @param output Map output buffer
-     * @param split the split
-     * @return Illustrator's context
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    public Context getIllustratorContext(Configuration conf, DataBag input,
-          List<Pair<PigNullableWritable, Writable>> output, InputSplit split)
-          throws IOException, InterruptedException {
-        return new IllustratorContext(conf, input, output, split);
-    }
-    
-    public class IllustratorContext extends Context {
-        private DataBag input;
-        List<Pair<PigNullableWritable, Writable>> output;
-        private Iterator<Tuple> it = null;
-        private Tuple value = null;
-        private boolean init  = false;
-
-        public IllustratorContext(Configuration conf, DataBag input,
-              List<Pair<PigNullableWritable, Writable>> output,
-              InputSplit split) throws IOException, InterruptedException {
-              super(conf, new TaskAttemptID(), null, null, null, null, split);
-              if (output == null)
-                  throw new IOException("Null output can not be used");
-              this.input = input; this.output = output;
-        }
-        
-        @Override
-        public boolean nextKeyValue() throws IOException, InterruptedException {
-            if (input == null) {
-                if (!init) {
-                    init = true;
-                    return true;
-                }
-                return false;
-            }
-            if (it == null)
-                it = input.iterator();
-            if (!it.hasNext())
-                return false;
-            value = it.next();
-            return true;
-        }
-        
-        @Override
-        public Text getCurrentKey() {
-          return null;
-        }
-        
-        @Override
-        public Tuple getCurrentValue() {
-          return value;
-        }
-        
-        @Override
-        public void write(PigNullableWritable key, Writable value) 
-            throws IOException, InterruptedException {
-            output.add(new Pair<PigNullableWritable, Writable>(key, value));
-        }
-        
-        @Override
-        public void progress() {
-          
-        }
-    }
+    abstract public Context getIllustratorContext(Configuration conf, DataBag input,
+            List<Pair<PigNullableWritable, Writable>> output, InputSplit split)
+            throws IOException, InterruptedException;
 }

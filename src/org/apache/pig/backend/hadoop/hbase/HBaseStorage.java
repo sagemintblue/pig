@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
@@ -76,6 +77,7 @@ import org.apache.pig.ResourceSchema.ResourceFieldSchema;
 import org.apache.pig.StoreFuncInterface;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
 import org.apache.pig.backend.hadoop.hbase.HBaseTableInputFormat.HBaseTableIFBuilder;
+import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
 import org.apache.pig.builtin.Utf8StorageConverter;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -159,7 +161,6 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
 
     private ResourceSchema schema_;
     private RequiredFieldList requiredFieldList;
-    private boolean initialized = false;
 
     private static void populateValidOptions() { 
         validOptions_.addOption("loadKey", false, "Load Key");
@@ -274,6 +275,21 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     }
 
     /**
+     * Returns UDFProperties based on <code>contextSignature</code>.
+     */
+    private Properties getUDFProperties() {
+        return UDFContext.getUDFContext()
+            .getUDFProperties(this.getClass(), new String[] {contextSignature});
+    }
+
+    /**
+     * @return <code> contextSignature + "_projectedFields" </code>
+     */
+    private String projectedFieldsName() {
+        return contextSignature + "_projectedFields";
+    }
+
+    /**
      *
      * @param columnList
      * @param delimiter
@@ -334,12 +350,17 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         // apply any column filters
         FilterList allColumnFilters = null;
         for (ColumnInfo colInfo : columnInfo_) {
-            if (colInfo.isColumnMap() && colInfo.getColumnPrefix() != null) {
+            // all column family filters roll up to one parent OR filter
+            if (allColumnFilters == null) {
+                allColumnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+            }
 
-                // all column family filters roll up to one parent OR filter
-                if (allColumnFilters == null) {
-                    allColumnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
-                }
+            // and each filter contains a column family filter
+            FilterList thisColumnFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+            thisColumnFilter.addFilter(new FamilyFilter(CompareOp.EQUAL,
+                    new BinaryComparator(colInfo.getColumnFamily())));
+
+            if (colInfo.isColumnMap()) {
 
                 if (LOG.isInfoEnabled()) {
                     LOG.info("Adding family:prefix filters with values " +
@@ -347,15 +368,28 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
                         Bytes.toString(colInfo.getColumnPrefix()));
                 }
 
-                // each column family filter consists of a FamilyFilter AND a PrefixFilter
-                FilterList thisColumnFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-                thisColumnFilter.addFilter(new FamilyFilter(CompareOp.EQUAL,
-                        new BinaryComparator(colInfo.getColumnFamily())));
-                thisColumnFilter.addFilter(new ColumnPrefixFilter(
+                // each column map filter consists of a FamilyFilter AND
+                // optionally a PrefixFilter
+                if (colInfo.getColumnPrefix() != null) {
+                    thisColumnFilter.addFilter(new ColumnPrefixFilter(
                         colInfo.getColumnPrefix()));
-
-                allColumnFilters.addFilter(thisColumnFilter);
+                }
             }
+            else {
+
+                if (LOG.isInfoEnabled()) {
+                    LOG.info("Adding family:descriptor filters with values " +
+                        Bytes.toString(colInfo.getColumnFamily()) + COLON +
+                        Bytes.toString(colInfo.getColumnName()));
+                }
+
+                // each column value filter consists of a FamilyFilter AND
+                // a QualifierFilter
+                thisColumnFilter.addFilter(new QualifierFilter(CompareOp.EQUAL,
+                        new BinaryComparator(colInfo.getColumnName())));
+            }
+
+            allColumnFilters.addFilter(thisColumnFilter);
         }
 
         if (allColumnFilters != null) {
@@ -374,7 +408,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     private void addFilter(Filter filter) {
         FilterList scanFilter = (FilterList) scan.getFilter();
         if (scanFilter == null) {
-            scanFilter = new FilterList();
+            scanFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
         }
         scanFilter.addFilter(filter);
         scan.setFilter(scanFilter);
@@ -385,7 +419,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
    * is available for unit testing. Ideally, the unit tests and the main source
    * would each mirror the same package structure and this method could be package
    * private.
-   * @return
+   * @return ColumnInfo
    */
     public List<ColumnInfo> getColumnInfoList() {
       return columnInfo_;
@@ -394,17 +428,6 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     @Override
     public Tuple getNext() throws IOException {
         try {
-            if (!initialized) {
-                Properties p = UDFContext.getUDFContext().getUDFProperties(this.getClass(),
-                        new String[] {contextSignature});
-
-                String projectedFields = p.getProperty(contextSignature+"_projectedFields");
-                if (projectedFields != null) {
-                    requiredFieldList = (RequiredFieldList) ObjectSerializer.deserialize(projectedFields);
-                    pushProjection(requiredFieldList);
-                }
-                initialized = true;
-            }
             if (reader.nextKeyValue()) {
                 ImmutableBytesWritable rowKey = (ImmutableBytesWritable) reader
                 .getCurrentKey();
@@ -508,14 +531,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     @Override
     public void setLocation(String location, Job job) throws IOException {
         job.getConfiguration().setBoolean("pig.noSplitCombination", true);
-        m_conf = job.getConfiguration();
-        HBaseConfiguration.addHbaseResources(m_conf);
-
-        // Make sure the HBase, ZooKeeper, and Guava jars get shipped.
-        TableMapReduceUtil.addDependencyJars(job.getConfiguration(), 
-            org.apache.hadoop.hbase.client.HTable.class,
-            com.google.common.collect.Lists.class,
-            org.apache.zookeeper.ZooKeeper.class);
+        m_conf = initialiseHBaseClassLoaderResources(job);
 
         String tablename = location;
         if (location.startsWith("hbase://")){
@@ -527,9 +543,10 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         m_table.setScannerCaching(caching_);
         m_conf.set(TableInputFormat.INPUT_TABLE, tablename);
 
-        // Set up scan if it is not already set up.
-        if (m_conf.get(TableInputFormat.SCAN) != null) {
-            return;
+        String projectedFields = getUDFProperties().getProperty( projectedFieldsName() );
+        if (projectedFields != null) {
+            // update columnInfo_
+            pushProjection((RequiredFieldList) ObjectSerializer.deserialize(projectedFields));
         }
 
         for (ColumnInfo columnInfo : columnInfo_) {
@@ -549,6 +566,24 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             p.setProperty(contextSignature + "_projectedFields", ObjectSerializer.serialize(requiredFieldList));
         }
         m_conf.set(TableInputFormat.SCAN, convertScanToString(scan));
+    }
+
+    private Configuration initialiseHBaseClassLoaderResources(Job job) throws IOException {
+        Configuration hbaseConfig = initialiseHBaseConfig(job.getConfiguration());
+
+        // Make sure the HBase, ZooKeeper, and Guava jars get shipped.
+        TableMapReduceUtil.addDependencyJars(job.getConfiguration(),
+            org.apache.hadoop.hbase.client.HTable.class,
+            com.google.common.collect.Lists.class,
+            org.apache.zookeeper.ZooKeeper.class);
+
+        return hbaseConfig;
+    }
+
+    private Configuration initialiseHBaseConfig(Configuration conf) {
+        Configuration hbaseConfig = HBaseConfiguration.create();
+        ConfigurationUtil.mergeConf(hbaseConfig, conf);
+        return hbaseConfig;
     }
 
     @Override
@@ -587,7 +622,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     public OutputFormat getOutputFormat() throws IOException {
         if (outputFormat == null) {
             this.outputFormat = new TableOutputFormat();
-            HBaseConfiguration.addHbaseResources(m_conf);
+            m_conf = initialiseHBaseConfig(m_conf);
             this.outputFormat.setConf(m_conf);            
         }
         return outputFormat;
@@ -600,6 +635,8 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             throw new IOException("Bad Caster " + caster_.getClass());
         }
         schema_ = s;
+        getUDFProperties().setProperty(contextSignature + "_schema",
+                                       ObjectSerializer.serialize(schema_));
     }
 
     // Suppressing unchecked warnings for RecordWriter, which is not parameterized by StoreFuncInterface
@@ -612,15 +649,6 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
     @SuppressWarnings("unchecked")
     @Override
     public void putNext(Tuple t) throws IOException {
-        if (!initialized) {
-            Properties p = UDFContext.getUDFContext().getUDFProperties(this.getClass(),
-                    new String[] {contextSignature});
-            String serializedSchema = p.getProperty(contextSignature + "_schema");
-            if (serializedSchema!= null) {
-                schema_ = (ResourceSchema) ObjectSerializer.deserialize(serializedSchema);
-            }
-            initialized = true;
-        }
         ResourceFieldSchema[] fieldSchemas = (schema_ == null) ? null : schema_.getFields();
         byte type = (fieldSchemas == null) ? DataType.findType(t.get(0)) : fieldSchemas[0].getType();
         long ts=System.currentTimeMillis();
@@ -698,6 +726,7 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         case DataType.FLOAT: return caster.toBytes((Float) o);
         case DataType.INTEGER: return caster.toBytes((Integer) o);
         case DataType.LONG: return caster.toBytes((Long) o);
+        case DataType.BOOLEAN: return caster.toBytes((Boolean) o);
         
         // The type conversion here is unchecked. 
         // Relying on DataType.findType to do the right thing.
@@ -728,11 +757,13 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         }else{
             job.getConfiguration().set(TableOutputFormat.OUTPUT_TABLE, location);
         }
-        Properties props = UDFContext.getUDFContext().getUDFProperties(getClass(), new String[]{contextSignature});
-        if (!props.containsKey(contextSignature + "_schema")) {
-            props.setProperty(contextSignature + "_schema",  ObjectSerializer.serialize(schema_));
-    }
-        m_conf = HBaseConfiguration.addHbaseResources(job.getConfiguration());
+
+        String serializedSchema = getUDFProperties().getProperty(contextSignature + "_schema");
+        if (serializedSchema!= null) {
+            schema_ = (ResourceSchema) ObjectSerializer.deserialize(serializedSchema);
+        }
+
+        m_conf = initialiseHBaseClassLoaderResources(job);
     }
 
     @Override
@@ -754,6 +785,21 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
         List<RequiredField>  requiredFields = requiredFieldList.getFields();
         List<ColumnInfo> newColumns = Lists.newArrayListWithExpectedSize(requiredFields.size());
 
+        if (this.requiredFieldList != null) {
+            // in addition to PIG, this is also called by this.setLocation().
+            LOG.debug("projection is already set. skipping.");
+            return new RequiredFieldResponse(true);
+        }
+
+        /* How projection is handled :
+         *  - pushProjection() is invoked by PIG on the front end
+         *  - pushProjection here both stores serialized projection in the
+         *    context and adjusts columnInfo_.
+         *  - setLocation() is invoked on the backend and it reads the
+         *    projection from context. setLocation invokes this method again
+         *    so that columnInfo_ is adjected.
+         */
+
         // colOffset is the offset in our columnList that we need to apply to indexes we get from requiredFields
         // (row key is not a real column)
         int colOffset = loadRowKey_ ? 1 : 0;
@@ -766,7 +812,15 @@ public class HBaseStorage extends LoadFunc implements StoreFuncInterface, LoadPu
             throw new FrontendException("The list of columns to project from HBase is larger than HBaseStorage is configured to load.");
         }
 
-        if (loadRowKey_ &&
+        // remember the projection
+        try {
+            getUDFProperties().setProperty( projectedFieldsName(),
+                    ObjectSerializer.serialize(requiredFieldList) );
+        } catch (IOException e) {
+            throw new FrontendException(e);
+        }
+
+       if (loadRowKey_ &&
                 ( requiredFields.size() < 1 || requiredFields.get(0).getIndex() != 0)) {
                 loadRowKey_ = false;
             projOffset = 0;

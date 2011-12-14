@@ -48,7 +48,6 @@ import org.apache.pig.impl.io.FileSpec;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.plan.NodeIdGenerator;
 import org.apache.pig.impl.plan.OperatorKey;
-import org.apache.pig.impl.plan.PlanValidationException;
 import org.apache.pig.impl.streaming.StreamingCommand;
 import org.apache.pig.impl.streaming.StreamingCommand.Handle;
 import org.apache.pig.impl.streaming.StreamingCommand.HandleSpec;
@@ -60,8 +59,11 @@ import org.apache.pig.newplan.logical.expression.ConstantExpression;
 import org.apache.pig.newplan.logical.expression.LessThanExpression;
 import org.apache.pig.newplan.logical.expression.LogicalExpression;
 import org.apache.pig.newplan.logical.expression.LogicalExpressionPlan;
+import org.apache.pig.newplan.logical.expression.NotExpression;
+import org.apache.pig.newplan.logical.expression.OrExpression;
 import org.apache.pig.newplan.logical.expression.ProjectExpression;
 import org.apache.pig.newplan.logical.expression.UserFuncExpression;
+import org.apache.pig.newplan.logical.optimizer.SchemaResetter;
 import org.apache.pig.newplan.logical.relational.LOCogroup;
 import org.apache.pig.newplan.logical.relational.LOCogroup.GROUPTYPE;
 import org.apache.pig.newplan.logical.relational.LOCross;
@@ -85,6 +87,8 @@ import org.apache.pig.newplan.logical.relational.LogicalPlan;
 import org.apache.pig.newplan.logical.relational.LogicalRelationalOperator;
 import org.apache.pig.newplan.logical.relational.LogicalSchema;
 import org.apache.pig.newplan.logical.relational.LogicalSchema.LogicalFieldSchema;
+import org.apache.pig.newplan.logical.rules.OptimizerUtils;
+import org.apache.pig.newplan.logical.visitor.ProjStarInUdfExpander;
 import org.apache.pig.newplan.logical.visitor.ProjectStarExpander;
 
 public class LogicalPlanBuilder {
@@ -156,28 +160,40 @@ public class LogicalPlanBuilder {
         return new LOFilter( plan, true );
     }
     
-    String buildFilterOp(SourceLocation loc, LOFilter op, String alias, String inputAlias, LogicalExpressionPlan expr) {
+    String buildFilterOp(SourceLocation loc, LOFilter op, String alias, 
+            String inputAlias, LogicalExpressionPlan expr)
+                    throws ParserValidationException {
+        
         op.setFilterPlan( expr );
-        return buildOp( loc, op, alias, inputAlias, null );
+        alias = buildOp( loc, op, alias, inputAlias, null ); // it should actually return same alias 
+        try {
+            (new ProjStarInUdfExpander(op.getPlan())).visit(op);
+            new SchemaResetter(op.getPlan(), true).visit(op);
+        } catch (FrontendException e) {
+            throw new ParserValidationException( intStream, loc, e );
+        }   
+        return alias;
     }
     
-    String buildDistinctOp(SourceLocation loc, String alias, String inputAlias, String partitioner) {
+    String buildDistinctOp(SourceLocation loc, String alias, String inputAlias, String partitioner) throws ParserValidationException {
         LODistinct op = new LODistinct( plan );
         return buildOp( loc, op, alias, inputAlias, partitioner );
     }
 
-    String buildLimitOp(SourceLocation loc, String alias, String inputAlias, long limit) {
+    String buildLimitOp(SourceLocation loc, String alias, String inputAlias, long limit) throws ParserValidationException {
         LOLimit op = new LOLimit( plan, limit );
         return buildOp( loc, op, alias, inputAlias, null );
     }
     
-    String buildLimitOp(SourceLocation loc, LOLimit op, String alias, String inputAlias, LogicalExpressionPlan expr) {
+    String buildLimitOp(SourceLocation loc, LOLimit op, String alias, String inputAlias, LogicalExpressionPlan expr) throws ParserValidationException {
         op.setLimitPlan(expr);
         return buildOp(loc, op, alias, inputAlias, null);
     }
     
     String buildSampleOp(SourceLocation loc, String alias, String inputAlias, double value,
-            SourceLocation valLoc) {
+            SourceLocation valLoc)
+                    throws ParserValidationException {
+        
         LogicalExpressionPlan filterPlan = new LogicalExpressionPlan();
         //  Generate a filter condition.
         LogicalExpression konst = new ConstantExpression( filterPlan, value);
@@ -189,18 +205,20 @@ public class LogicalPlanBuilder {
     }
     
     String buildSampleOp(SourceLocation loc, LOFilter filter, String alias, String inputAlias,
-            LogicalExpressionPlan samplePlan, LogicalExpression expr) {
+            LogicalExpressionPlan samplePlan, LogicalExpression expr)
+                    throws ParserValidationException {
+        
         UserFuncExpression udf = new UserFuncExpression( samplePlan, new FuncSpec( RANDOM.class.getName() ) );
         new LessThanExpression( samplePlan, udf, expr );
         return buildFilterOp( loc, filter, alias, inputAlias, samplePlan );
     }
     
-    String buildUnionOp(SourceLocation loc, String alias, List<String> inputAliases, boolean onSchema) {
+    String buildUnionOp(SourceLocation loc, String alias, List<String> inputAliases, boolean onSchema) throws ParserValidationException {
         LOUnion op = new LOUnion( plan, onSchema );
         return buildOp( loc, op, alias, inputAliases, null );
     }
 
-    String buildSplitOp(SourceLocation loc, String inputAlias) {
+    String buildSplitOp(SourceLocation loc, String inputAlias) throws ParserValidationException {
         LOSplit op = new LOSplit( plan );
         return buildOp( loc, op, null, inputAlias, null );
     }
@@ -210,12 +228,54 @@ public class LogicalPlanBuilder {
     }
     
     String buildSplitOutputOp(SourceLocation loc, LOSplitOutput op, String alias, String inputAlias,
-            LogicalExpressionPlan filterPlan) {
+            LogicalExpressionPlan filterPlan) throws ParserValidationException {
         op.setFilterPlan( filterPlan );
         return buildOp ( loc, op, alias, inputAlias, null );
     }
     
-    String buildCrossOp(SourceLocation loc, String alias, List<String> inputAliases, String partitioner) {
+    String buildSplitOtherwiseOp(SourceLocation loc, LOSplitOutput op, String alias, String inputAlias)
+            throws ParserValidationException, PlanGenerationFailureException {
+        LogicalExpressionPlan splitPlan = new LogicalExpressionPlan();
+        Operator losplit = lookupOperator(inputAlias);
+        LogicalExpression currentExpr = null;
+        for (Operator losplitoutput : plan.getSuccessors(losplit)) {
+            // take all the LOSplitOutput and negate their filter plans
+            LogicalExpressionPlan fragment = ((LOSplitOutput) losplitoutput)
+                    .getFilterPlan();
+            try {
+                if (OptimizerUtils.planHasNonDeterministicUdf(fragment))
+                    throw new ParserValidationException(
+                            intStream, loc, new FrontendException(op,
+                                    "Can not use Otherwise in Split with an expression containing a @Nondeterministic UDF", 1131));
+            } catch (FrontendException e) {
+                e.printStackTrace();
+                throw new PlanGenerationFailureException(intStream, loc, e);
+            }
+            LogicalExpression root = null;
+            try {
+                // get the root expression of the filter plan in LOSplitOutput and copy it
+                root = ((LogicalExpression) fragment.getSources().get(0))
+                        .deepCopy(splitPlan);
+            } catch (FrontendException e) {
+                e.printStackTrace();
+                throw new PlanGenerationFailureException(intStream, loc, e);
+            }
+            if (root == null)
+                throw new PlanGenerationFailureException(intStream, loc,
+                        new FrontendException(op,
+                                "Could not retrieve LogicalExpression for LOSplitOutput " + losplitoutput, 2048));
+            if (currentExpr == null)
+                currentExpr = root;
+            else
+                currentExpr = new OrExpression(splitPlan, currentExpr, root);
+        }
+        // using De Morgan's law (!A && !B) == !(A || B)
+        currentExpr = new NotExpression(splitPlan, currentExpr);
+        op.setFilterPlan(splitPlan);
+        return buildOp(loc, op, alias, inputAlias, null);
+    }
+    
+    String buildCrossOp(SourceLocation loc, String alias, List<String> inputAliases, String partitioner) throws ParserValidationException {
         LOCross op = new LOCross( plan );
         return buildOp ( loc, op, alias, inputAliases, partitioner );
     }
@@ -236,6 +296,8 @@ public class LogicalPlanBuilder {
         alias = buildOp( loc, sort, alias, inputAlias, null );
         try {
             (new ProjectStarExpander(sort.getPlan())).visit(sort);
+            (new ProjStarInUdfExpander(sort.getPlan())).visit(sort);
+            new SchemaResetter(sort.getPlan(), true).visit(sort);
         } catch (FrontendException e) {
             throw new ParserValidationException( intStream, loc, e );
         }
@@ -268,7 +330,7 @@ public class LogicalPlanBuilder {
                 throw new ParserValidationException( intStream, loc,
                         "Skewed join can only be applied for 2-way joins" );
             }
-        } else if( jt == JOINTYPE.MERGE && inputCount != 2 ) {
+        } else if( (jt == JOINTYPE.MERGE || jt == JOINTYPE.MERGESPARSE) && inputCount != 2 ) {
             throw new ParserValidationException( intStream, loc,
                     "Merge join can only be applied for 2-way joins" );
         } else if( jt == JOINTYPE.REPLICATED ) {
@@ -295,6 +357,8 @@ public class LogicalPlanBuilder {
         alias = buildOp( loc, op, alias, inputAliases, partitioner );
         try {
             (new ProjectStarExpander(op.getPlan())).visit(op);
+            (new ProjStarInUdfExpander(op.getPlan())).visit(op);
+            new SchemaResetter(op.getPlan(), true).visit(op);
         } catch (FrontendException e) {
             throw new ParserValidationException( intStream, loc, e );
         }
@@ -336,6 +400,8 @@ public class LogicalPlanBuilder {
         alias = buildOp( loc, op, alias, inputAliases, partitioner );
         try {
             (new ProjectStarExpander(op.getPlan())).visit(op);
+            (new ProjStarInUdfExpander(op.getPlan())).visit(op);
+            new SchemaResetter(op.getPlan(), true).visit(op);
         } catch (FrontendException e) {
             throw new ParserValidationException( intStream, loc, e );
         }
@@ -378,7 +444,7 @@ public class LogicalPlanBuilder {
     }
     
     private String buildOp(SourceLocation loc, LogicalRelationalOperator op, String alias, 
-    		String inputAlias, String partitioner) {
+    		String inputAlias, String partitioner) throws ParserValidationException {
         List<String> inputAliases = new ArrayList<String>();
         if( inputAlias != null )
             inputAliases.add( inputAlias );
@@ -386,16 +452,20 @@ public class LogicalPlanBuilder {
     }
     
     private String buildOp(SourceLocation loc, LogicalRelationalOperator op, String alias, 
-    		List<String> inputAliases, String partitioner) {
+    		List<String> inputAliases, String partitioner) throws ParserValidationException {
         setAlias( op, alias );
         setPartitioner( op, partitioner );
         op.setLocation( loc );
         plan.add( op );
         for( String a : inputAliases ) {
             Operator pred = operators.get( a );
+            if (pred==null) {
+                throw new ParserValidationException( intStream, loc, "Unrecognized alias " + a );
+            }
             plan.connect( pred, op );
         }
         operators.put( op.getAlias(), op );
+        pigContext.setLastAlias(op.getAlias());	
         return op.getAlias();
     }
 
@@ -446,6 +516,8 @@ public class LogicalPlanBuilder {
         alias = buildOp( loc, op, alias, inputAlias, null );
         try {
             (new ProjectStarExpander(op.getPlan())).visit(op);
+            (new ProjStarInUdfExpander(op.getPlan())).visit(op);
+            new SchemaResetter(op.getPlan(), true).visit(op);
         } catch (FrontendException e) {
             throw new ParserValidationException( intStream, loc, e );
         }
@@ -824,7 +896,7 @@ public class LogicalPlanBuilder {
      * @param endExpr the last expression to be projected, null 
      *        if everything to the end is to be projected
      * @return project expression
-     * @throws PlanValidationException 
+     * @throws ParserValidationException 
      */
     LogicalExpression buildRangeProjectExpr(SourceLocation loc, LogicalExpressionPlan plan, LogicalRelationalOperator relOp,
             int input, LogicalExpression startExpr, LogicalExpression endExpr)
@@ -1002,6 +1074,10 @@ public class LogicalPlanBuilder {
         }
     }
     
+    static LOForEach createNestedForeachOp(LogicalPlan plan) {
+    	return new LOForEach(plan);
+    }
+    
     Operator buildNestedSortOp(SourceLocation loc, LOSort op, LogicalPlan plan, String alias, Operator inputOp,
             List<LogicalExpressionPlan> plans, 
             List<Boolean> ascFlags, FuncSpec fs) {
@@ -1014,6 +1090,15 @@ public class LogicalPlanBuilder {
         op.setUserFunc( fs );
         buildNestedOp( loc, plan, op, alias, inputOp );
         return op;
+    }
+    
+    Operator buildNestedForeachOp(SourceLocation loc, LOForEach op, LogicalPlan plan, String alias, 
+    		Operator inputOp, LogicalPlan innerPlan)
+    throws ParserValidationException
+    {
+    	op.setInnerPlan(innerPlan);
+    	buildNestedOp(loc, plan, op, alias, inputOp);
+    	return op;
     }
     
     Operator buildNestedProjectOp(SourceLocation loc, LogicalPlan innerPlan, LOForEach foreach, 
@@ -1104,9 +1189,11 @@ public class LogicalPlanBuilder {
                  return JOINTYPE.SKEWED;
           } else if (modifier.equalsIgnoreCase("merge")) {
                   return JOINTYPE.MERGE;
+          } else if (modifier.equalsIgnoreCase("merge-sparse")) {
+                  return JOINTYPE.MERGESPARSE;
           } else {
                   throw new ParserValidationException( intStream, loc,
-                          "Only REPL, REPLICATED, HASH, SKEWED and MERGE are vaild JOIN modifiers." );
+                      "Only REPL, REPLICATED, HASH, SKEWED, MERGE, and MERGE-SPARSE are vaild JOIN modifiers." );
           }
     }
 

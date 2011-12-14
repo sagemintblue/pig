@@ -22,6 +22,8 @@ use TestDeployer;
 use strict;
 use English;
 
+our @ISA = "TestDeployer";
+
 ###########################################################################
 # Class: ExistingClusterDeployer
 # Deploy the Pig harness to a cluster and database that already exists.
@@ -63,20 +65,23 @@ sub checkPrerequisites
 {
     my ($self, $cfg, $log) = @_;
 
-    # They must have declared the directory for their Hadoop installation
-    if (! defined $cfg->{'hadoopdir'} || $cfg->{'hadoopdir'} eq "") {
-        print $log "You must set the key 'hadoopdir' to your Hadoop directory "
+    # They must have declared the conf directory for their Hadoop installation
+    if (! defined $cfg->{'hadoopconfdir'} || $cfg->{'hadoopconfdir'} eq "") {
+        print $log "You must set the key 'hadoopconfdir' to your Hadoop conf directory "
             . "in existing.conf\n";
-        die "hadoopdir is not set in existing.conf\n";
+        die "hadoopconfdir is not set in existing.conf\n";
+    }
+    
+    # They must have declared the executable path for their Hadoop installation
+    if (! defined $cfg->{'hadoopbin'} || $cfg->{'hadoopbin'} eq "") {
+        print $log "You must set the key 'hadoopbin' to your Hadoop bin path"
+            . "in existing.conf\n";
+        die "hadoopbin is not set in existing.conf\n";
     }
 
     # Run a quick and easy Hadoop command to make sure we can
     $self->runHadoopCmd($cfg, $log, "fs -ls /");
 
-    # Make sure the database is installed and set up
-    $self->runDbCmd($cfg, $log, 0, "create table test_table(test_col int);");
-    $self->runDbCmd($cfg, $log, 0, "drop table test_table;");
-    
 }
 
 ##############################################################################
@@ -226,9 +231,6 @@ sub generateData
 			"$cfg->{'inpathbase'}/$table->{'hdfs'}";
 		$self->runHadoopCmd($cfg, $log, $hadoop);
 
-		# Load the data in the database
-		my $sql = "-f $table->{'name'}.sql";
-		$self->runDbCmd($cfg, $log, 1, $sql);
     }
 }
 
@@ -316,27 +318,20 @@ sub confirmUndeployment
     die "$0 INFO : confirmUndeployment is a virtual function!";
 }
 
+# TODO
+# Need to rework this to take the Pig command instead of Hadoop.  That way
+# it can use the existing utilities to build Pig commands and switch
+# naturally to local mode with everything else.
+
 sub runHadoopCmd($$$$)
 {
     my ($self, $cfg, $log, $c) = @_;
 
     # set the PIG_CLASSPATH environment variable
-    $ENV{'HADOOP_CLASSPATH'} = "$cfg->{'hadoopdir'}/conf";
+    $ENV{'HADOOP_CLASSPATH'} = "$cfg->{'hadoopconfdir'}";
                           
-    my @cmd = ("$cfg->{'hadoopdir'}/bin/hadoop");
+    my @cmd = ("$cfg->{'hadoopbin'}");
     push(@cmd, split(' ', $c));
-
-    $self->runCmd($log, \@cmd);
-}
-
-sub runDbCmd($$$$)
-{
-    my ($self, $cfg, $log, $isfile, $sql) = @_;
-
-	my $switch = $isfile ? 'f' : 'c';
-
-    my @cmd = ('psql', '-U', $cfg->{'dbuser'}, '-d', $cfg->{'dbdb'},
-		"-$switch", $sql);
 
     $self->runCmd($log, \@cmd);
 }

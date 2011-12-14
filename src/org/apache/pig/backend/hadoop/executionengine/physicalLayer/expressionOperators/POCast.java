@@ -20,7 +20,6 @@ package org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOp
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +33,10 @@ import org.apache.pig.PigException;
 import org.apache.pig.PigWarning;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceSchema.ResourceFieldSchema;
+import org.apache.pig.StreamToPig;
 import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
 import org.apache.pig.data.DataBag;
@@ -44,10 +44,9 @@ import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.PigContext;
-import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.NodeIdGenerator;
+import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.plan.VisitorException;
-import org.apache.pig.StreamToPig;
 import org.apache.pig.impl.util.CastUtils;
 import org.apache.pig.impl.util.LogUtils;
 
@@ -116,6 +115,122 @@ public class POCast extends ExpressionOperator {
     @Override
     public boolean supportsMultipleInputs() {
         return false;
+    }
+
+    @Override
+    public Result getNext(Boolean b) throws ExecException {
+        PhysicalOperator in = inputs.get(0);
+        Byte resultType = in.getResultType();
+        switch (resultType) {
+        case DataType.BAG: {
+            Result res = new Result();
+            res.returnStatus = POStatus.STATUS_ERR;
+            return res;
+        }
+
+        case DataType.TUPLE: {
+            Result res = new Result();
+            res.returnStatus = POStatus.STATUS_ERR;
+            return res;
+        }
+
+        case DataType.MAP: {
+            Result res = new Result();
+            res.returnStatus = POStatus.STATUS_ERR;
+            return res;
+        }
+        
+        case DataType.BYTEARRAY: {
+            DataByteArray dba = null;
+            Result res = in.getNext(dba);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                try {
+                    dba = (DataByteArray) res.result;
+                } catch (ClassCastException e) {
+                    // res.result is not of type ByteArray. But it can be one of the types from which cast is still possible.
+                    if (realType == null)
+                        // Find the type and cache it.
+                        realType = DataType.findType(res.result);
+                    try {
+                        res.result = DataType.toBoolean(res.result, realType);
+                    } catch (ClassCastException cce) {
+                        // Type has changed. Need to find type again and try casting it again.
+                        realType = DataType.findType(res.result);
+                        res.result = DataType.toBoolean(res.result, realType);
+                    }
+                    return res;
+                }
+                try {
+                    if (null != caster) {
+                        res.result = caster.bytesToBoolean(dba.get());
+                    } else {
+                        int errCode = 1075;
+                        String msg = "Received a bytearray from the UDF. Cannot determine how to convert the bytearray to boolean.";
+                        throw new ExecException(msg, errCode, PigException.INPUT);
+                    }
+                } catch (ExecException ee) {
+                    throw ee;
+                } catch (IOException e) {
+                    log.error("Error while casting from ByteArray to Boolean");
+                }
+            }
+            return res;
+        }
+
+        case DataType.CHARARRAY: {
+            String str = null;
+            Result res = in.getNext(str);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                res.result = CastUtils.stringToBoolean((String)res.result);
+            }
+            return res;
+        }
+        
+        case DataType.BOOLEAN: {
+            Result res = in.getNext(b);
+            return res;
+        }
+        
+        case DataType.INTEGER: {
+            Integer i = null;
+            Result res = in.getNext(i);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                res.result = Boolean.valueOf(((Integer) res.result).intValue() != 0);
+            }
+            return res;
+        }
+
+        case DataType.LONG: {
+            Long l = null;
+            Result res = in.getNext(l);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                res.result = Boolean.valueOf(((Long) res.result).longValue() != 0L);
+            }
+            return res;
+        }
+
+        case DataType.FLOAT: {
+            Float f = null;
+            Result res = in.getNext(f);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                res.result = Boolean.valueOf(((Float) res.result).floatValue() != 0.0F);
+            }
+            return res;
+        }
+
+        case DataType.DOUBLE: {
+            Double d = null;
+            Result res = in.getNext(d);
+            if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
+                res.result = Boolean.valueOf(((Double) res.result).doubleValue() != 0.0);
+            }
+            return res;
+        }
+        }
+        
+        Result res = new Result();
+        res.returnStatus = POStatus.STATUS_ERR;
+        return res;
     }
 
     @Override
@@ -671,9 +786,11 @@ public class POCast extends ExpressionOperator {
             Result res = in.getNext(b);
             if (res.returnStatus == POStatus.STATUS_OK && res.result != null) {
                 if (((Boolean) res.result) == true)
-                    res.result = "1";
+                    //res.result = "1";
+                    res.result = Boolean.TRUE.toString();
                 else
-                    res.result = "0";
+                    //res.result = "0";
+                    res.result = Boolean.FALSE.toString();
             }
             return res;
         }
@@ -831,8 +948,13 @@ public class POCast extends ExpressionOperator {
     private Object convertWithSchema(Object obj, ResourceFieldSchema fs) throws IOException {
         Object result = null;
         
-        if (fs==null) {
+        if (fs == null) {
             return obj;
+        }
+
+        if (obj == null) {
+            // handle DataType.NULL
+            return null;
         }
         
         switch (fs.getType()) {
@@ -923,6 +1045,39 @@ public class POCast extends ExpressionOperator {
                 }
             } else {
                 throw new ExecException("Cannot cast " + obj + " to map.", 1120, PigException.INPUT);
+            }
+            break;
+        case DataType.BOOLEAN:
+            switch (DataType.findType(obj)) {
+            case DataType.BYTEARRAY:
+                if (null != caster) {
+                    result = caster.bytesToBoolean(((DataByteArray) obj).get());
+                } else {
+                    int errCode = 1075;
+                    String msg = "Received a bytearray from the UDF. Cannot determine how to convert the bytearray to int.";
+                    throw new ExecException(msg, errCode, PigException.INPUT);
+                }
+                break;
+            case DataType.BOOLEAN:
+                result = obj;
+                break;
+            case DataType.INTEGER:
+                result = Boolean.valueOf(((Integer) obj).intValue() != 0);;
+                break;
+            case DataType.DOUBLE:
+                result = Boolean.valueOf(((Double) obj).doubleValue() != 0.0D);
+                break;
+            case DataType.LONG:
+                result = Boolean.valueOf(((Long) obj).longValue() != 0L);
+                break;
+            case DataType.FLOAT:
+                result = Boolean.valueOf(((Float) obj).floatValue() != 0.0F);
+                break;
+            case DataType.CHARARRAY:
+                result = CastUtils.stringToBoolean((String)obj);
+                break;
+            default:
+                throw new ExecException("Cannot convert "+ obj + " to " + fs, 1120, PigException.INPUT);
             }
             break;
         case DataType.INTEGER:
@@ -1082,9 +1237,11 @@ public class POCast extends ExpressionOperator {
                 break;
             case DataType.BOOLEAN:
                 if (((Boolean) obj) == true)
-                    result = "1";
+                    //result = "1";
+                    result = Boolean.TRUE.toString();
                 else
-                    result = "0";
+                    //result = "0";
+                    result = Boolean.FALSE.toString();
                 break;
             case DataType.INTEGER:
                 result = ((Integer) obj).toString();

@@ -18,6 +18,7 @@
 package org.apache.pig.backend.hadoop.executionengine.mapReduceLayer;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.apache.pig.ResourceSchema;
 import org.apache.pig.StoreFuncInterface;
 import org.apache.pig.StoreMetadata;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POStore;
+import org.apache.pig.backend.hadoop.executionengine.shims.HadoopShims;
 import org.apache.pig.backend.hadoop.executionengine.util.MapRedUtil;
 import org.apache.pig.impl.PigContext;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -103,7 +105,7 @@ public class PigOutputCommitter extends OutputCommitter {
         MapRedUtil.setupUDFContext(context.getConfiguration());
         // make a copy of the context so that the actions after this call
         // do not end up updating the same context
-        TaskAttemptContext contextCopy = new TaskAttemptContext(
+        TaskAttemptContext contextCopy = HadoopShims.createTaskAttemptContext(
                 context.getConfiguration(), context.getTaskAttemptID());
         
         // call setLocation() on the storeFunc so that if there are any
@@ -118,8 +120,9 @@ public class PigOutputCommitter extends OutputCommitter {
             POStore store) throws IOException {
         // make a copy of the context so that the actions after this call
         // do not end up updating the same context
-        JobContext contextCopy = new JobContext(
+        JobContext contextCopy = HadoopShims.createJobContext(
                 context.getConfiguration(), context.getJobID());
+        MapRedUtil.setupUDFContext(context.getConfiguration());
         
         // call setLocation() on the storeFunc so that if there are any
         // side effects like setting map.output.dir on the Configuration
@@ -162,10 +165,46 @@ public class PigOutputCommitter extends OutputCommitter {
         }
        
     }
+    
+    // This method only be called in 20.203+
+    public void commitJob(JobContext context) throws IOException {
+        // call commitJob on all map and reduce committers
+        for (Pair<OutputCommitter, POStore> mapCommitter : mapOutputCommitters) {
+            JobContext updatedContext = setUpContext(context,
+                    mapCommitter.second);
+            storeCleanup(mapCommitter.second, updatedContext.getConfiguration());
+            try {
+                // Use reflection, 20.2 does not have such method
+                Method m = mapCommitter.first.getClass().getMethod("commitJob", JobContext.class);
+                m.setAccessible(true);
+                m.invoke(mapCommitter.first, updatedContext);
+            } catch (Exception e) {
+                // Should not happen
+                assert(false);
+            }
+            
+        }
+        for (Pair<OutputCommitter, POStore> reduceCommitter :
+            reduceOutputCommitters) {
+            JobContext updatedContext = setUpContext(context,
+                    reduceCommitter.second);
+            storeCleanup(reduceCommitter.second, updatedContext.getConfiguration());
+            try {
+                // Use reflection, 20.2 does not have such method
+                Method m = reduceCommitter.first.getClass().getMethod("commitJob", JobContext.class);
+                m.setAccessible(true);
+                m.invoke(reduceCommitter.first, updatedContext);
+            } catch (Exception e) {
+                // Should not happen
+                assert(false);
+            }
+        }
+    }
+
 
     @Override
     public void abortTask(TaskAttemptContext context) throws IOException {        
-        if(context.getTaskAttemptID().isMap()) {
+        if(HadoopShims.isMap(context.getTaskAttemptID())) {
             for (Pair<OutputCommitter, POStore> mapCommitter : 
                 mapOutputCommitters) {
                 TaskAttemptContext updatedContext = setUpContext(context, 
@@ -184,7 +223,7 @@ public class PigOutputCommitter extends OutputCommitter {
     
     @Override
     public void commitTask(TaskAttemptContext context) throws IOException {
-        if(context.getTaskAttemptID().isMap()) {
+        if(HadoopShims.isMap(context.getTaskAttemptID())) {
             for (Pair<OutputCommitter, POStore> mapCommitter : 
                 mapOutputCommitters) {
                 TaskAttemptContext updatedContext = setUpContext(context, 
@@ -205,7 +244,7 @@ public class PigOutputCommitter extends OutputCommitter {
     public boolean needsTaskCommit(TaskAttemptContext context)
             throws IOException {
         boolean needCommit = false;
-        if(context.getTaskAttemptID().isMap()) {
+        if(HadoopShims.isMap(context.getTaskAttemptID())) {
             for (Pair<OutputCommitter, POStore> mapCommitter : 
                 mapOutputCommitters) {
                 TaskAttemptContext updatedContext = setUpContext(context, 
@@ -244,7 +283,7 @@ public class PigOutputCommitter extends OutputCommitter {
     
     @Override
     public void setupTask(TaskAttemptContext context) throws IOException {
-        if(context.getTaskAttemptID().isMap()) {
+        if(HadoopShims.isMap(context.getTaskAttemptID())) {
             for (Pair<OutputCommitter, POStore> mapCommitter : 
                 mapOutputCommitters) {
                 TaskAttemptContext updatedContext = setUpContext(context, 

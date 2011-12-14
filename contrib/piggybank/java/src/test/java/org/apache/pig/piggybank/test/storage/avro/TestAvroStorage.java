@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.piggybank.storage.avro.PigSchema2Avro;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,6 +36,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 import static junit.framework.Assert.assertEquals;
@@ -63,6 +65,8 @@ public class TestAvroStorage {
 
     final private String testArrayFile = getInputFile("test_array.avro");
     final private String testRecordFile = getInputFile("test_record.avro");
+    final private String testRecordSchema = getInputFile("test_record.avsc");
+    final private String testTextFile = getInputFile("test_record.txt");
 
     @BeforeClass
     public static void setup() throws ExecException {
@@ -137,7 +141,31 @@ public class TestAvroStorage {
     }
 
     @Test
+    public void testArrayWithSnappyCompression() throws IOException {
+        String output= outbasedir + "testArrayWithSnappyCompression";
+        String expected = basedir + "expected_testArrayDefault.avro";
+      
+        deleteDirectory(new File(output));
+      
+        Properties properties = new Properties();
+        properties.setProperty("mapred.output.compress", "true");
+        properties.setProperty("avro.output.codec", "snappy");
+        PigServer pigServer = new PigServer(ExecType.LOCAL, properties);
+        pigServer.setBatchOn();
+        String [] queries = {
+           " in = LOAD '" + testArrayFile + " ' USING org.apache.pig.piggybank.storage.avro.AvroStorage ();",
+           " STORE in INTO '" + output + "' USING org.apache.pig.piggybank.storage.avro.AvroStorage ();"
+            };
+        for (String query: queries){
+            pigServer.registerQuery(query);
+        }
+        pigServer.executeBatch();
+        verifyResults(output, expected, "snappy");
+    }
+
+    @Test
     public void testRecordWithSplit() throws IOException {
+        PigSchema2Avro.setTupleIndex(0);
         String output1= outbasedir + "testRecordSplit1";
         String output2= outbasedir + "testRecordSplit2";
         String expected1 = basedir + "expected_testRecordSplit1.avro";
@@ -165,9 +193,41 @@ public class TestAvroStorage {
         verifyResults(output1, expected1);
         verifyResults(output2, expected2);
     }
-    
+
+    @Test
+    public void testRecordWithSplitFromText() throws IOException {
+        PigSchema2Avro.setTupleIndex(0);
+        String output1= outbasedir + "testRecordSplitFromText1";
+        String output2= outbasedir + "testRecordSplitFromText2";
+        String expected1 = basedir + "expected_testRecordSplitFromText1.avro";
+        String expected2 = basedir + "expected_testRecordSplitFromText2.avro";
+        deleteDirectory(new File(output1));
+        deleteDirectory(new File(output2));
+        String [] queries = {
+           " avro = LOAD '" + testTextFile + "' AS (member_id:int, browser_id:chararray, tracking_time:long, act_content:bag{inner:tuple(key:chararray, value:chararray)});",
+           " groups = GROUP avro BY member_id;",
+           " sc = FOREACH groups GENERATE group AS key, COUNT(avro) AS cnt;",
+           " STORE sc INTO '" + output1 + "' " +
+                 " USING org.apache.pig.piggybank.storage.avro.AvroStorage (" +
+                 "'{\"index\": 1, " +
+                 "  \"schema\": {\"type\":\"record\", " +
+                                        " \"name\":\"result\", " +
+                                        " \"fields\":[ {\"name\":\"member_id\",\"type\":\"int\"}, " +
+                                                      "{\"name\":\"count\", \"type\":\"long\"} " +
+                                                          "]" +
+                                         "}" +
+                " }');",
+            " STORE sc INTO '" + output2 +
+                    " 'USING org.apache.pig.piggybank.storage.avro.AvroStorage ('index', '2');"
+            };
+        testAvroStorage( queries);
+        verifyResults(output1, expected1);
+        verifyResults(output2, expected2);
+    }
+
     @Test
     public void testRecordWithFieldSchema() throws IOException {
+        PigSchema2Avro.setTupleIndex(1);
         String output= outbasedir + "testRecordWithFieldSchema";
         String expected = basedir + "expected_testRecordWithFieldSchema.avro";
         deleteDirectory(new File(output));
@@ -186,7 +246,51 @@ public class TestAvroStorage {
         testAvroStorage( queries);
         verifyResults(output, expected);
     }
-    
+
+    @Test
+    public void testRecordWithFieldSchemaFromText() throws IOException {
+        PigSchema2Avro.setTupleIndex(1);
+        String output= outbasedir + "testRecordWithFieldSchemaFromText";
+        String expected = basedir + "expected_testRecordWithFieldSchema.avro";
+        deleteDirectory(new File(output));
+        String [] queries = {
+          " avro = LOAD '" + testTextFile + "' AS (member_id:int, browser_id:chararray, tracking_time:long, act_content:bag{inner:tuple(key:chararray, value:chararray)});",
+          " avro1 = FILTER avro BY member_id > 1211;",
+          " avro2 = FOREACH avro1 GENERATE member_id, browser_id, tracking_time, act_content ;",
+          " STORE avro2 INTO '" + output + "' " +
+                " USING org.apache.pig.piggybank.storage.avro.AvroStorage (" +
+                "'{\"data\":  \"" + testRecordFile + "\" ," +
+                "  \"field0\": \"int\", " +
+                 " \"field1\":  \"def:browser_id\", " +
+                "  \"field3\": \"def:act_content\" " +
+               " }');"
+           };
+        testAvroStorage( queries);
+        verifyResults(output, expected);
+    }
+
+    @Test
+    public void testRecordWithFieldSchemaFromTextWithSchemaFile() throws IOException {
+        PigSchema2Avro.setTupleIndex(1);
+        String output= outbasedir + "testRecordWithFieldSchemaFromTextWithSchemaFile";
+        String expected = basedir + "expected_testRecordWithFieldSchema.avro";
+        deleteDirectory(new File(output));
+        String [] queries = {
+           " avro = LOAD '" + testTextFile + "' AS (member_id:int, browser_id:chararray, tracking_time:long, act_content:bag{inner:tuple(key:chararray, value:chararray)});",
+          " avro1 = FILTER avro BY member_id > 1211;",
+          " avro2 = FOREACH avro1 GENERATE member_id, browser_id, tracking_time, act_content ;",
+          " STORE avro2 INTO '" + output + "' " +
+                " USING org.apache.pig.piggybank.storage.avro.AvroStorage (" +
+                "'{\"schema_file\":  \"" + testRecordSchema + "\" ," +
+                "  \"field0\": \"int\", " +
+                 " \"field1\":  \"def:browser_id\", " +
+                "  \"field3\": \"def:act_content\" " +
+               " }');"
+           };
+        testAvroStorage( queries);
+        verifyResults(output, expected);
+    }
+
     private static void deleteDirectory (File path) {
         if ( path.exists()) {
             File [] files = path.listFiles();
@@ -200,7 +304,6 @@ public class TestAvroStorage {
     
     private void testAvroStorage(String ...queries) throws IOException {
         pigServerLocal.setBatchOn();
-
         for (String query: queries){
             if (query != null && query.length() > 0)
                 pigServerLocal.registerQuery(query);
@@ -209,6 +312,10 @@ public class TestAvroStorage {
     }
     
     private void verifyResults(String outPath, String expectedOutpath) throws IOException {
+      verifyResults(outPath, expectedOutpath, null);
+    }
+
+    private void verifyResults(String outPath, String expectedOutpath, String expectedCodec) throws IOException {
         FileSystem fs = FileSystem.getLocal(new Configuration()) ; 
         
         /* read in expected results*/
@@ -233,11 +340,12 @@ public class TestAvroStorage {
             
             DataFileStream<Object> in = new DataFileStream<Object>(
                                             fs.open(filePath), reader);
+            assertEquals("codec", expectedCodec, in.getMetaString("avro.codec"));
             int count = 0;
             while (in.hasNext()) {
                 Object obj = in.next();
               //System.out.println("obj = " + (GenericData.Array<Float>)obj);
-              assertTrue(expected.contains(obj));
+              assertTrue("Avro result object found that's not expected: " + obj, expected.contains(obj));
               count++;
             }        
             in.close();

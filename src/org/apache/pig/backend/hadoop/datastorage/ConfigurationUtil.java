@@ -18,6 +18,8 @@
 
 package org.apache.pig.backend.hadoop.datastorage;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,6 +27,8 @@ import java.util.Properties;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.pig.ExecType;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapReduce;
 import org.apache.pig.backend.hadoop.executionengine.util.MapRedUtil;
 
 public class ConfigurationUtil {
@@ -65,8 +69,30 @@ public class ConfigurationUtil {
     }
     
     public static Properties getLocalFSProperties() {
-        Configuration localConf = new Configuration(false);
-        localConf.addResource("core-default.xml");
+        Configuration localConf;
+        if (PigMapReduce.sJobContext!=null && PigMapReduce.sJobContext.getConfiguration().get("exectype").equals(ExecType.LOCAL.toString())) {
+            localConf = new Configuration(false);
+            localConf.addResource("core-default.xml");
+        } else {
+            localConf = new Configuration(true);
+            // It's really hacky, try to get unit test working under hadoop 23.
+            // Hadoop23 MiniMRCluster currently need setup Distributed cache before start, 
+            // so pigtest/conf/hadoop-site.xml contains such entry. This prevents some tests from 
+            // successful (They expect those files in hdfs), so we need to unset it in hadoop 23.
+            // This should go away once MiniMRCluster fix the distributed cache issue.
+            Method unsetMethod = null;
+            try {
+                unsetMethod = localConf.getClass().getMethod("unset", new Class[]{String.class});
+            } catch (Exception e) {
+            }
+            if (unsetMethod!=null) {
+                try {
+                    unsetMethod.invoke(localConf, new Object[]{"mapreduce.job.cache.files"});
+                } catch (Exception e) {
+                    // Should not happen
+                }
+            }
+        }
         Properties props = ConfigurationUtil.toProperties(localConf);
         props.setProperty(MapRedUtil.FILE_SYSTEM_NAME, "file:///");
         return props;

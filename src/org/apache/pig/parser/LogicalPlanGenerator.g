@@ -47,6 +47,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.streaming.StreamingCommand;
 import org.apache.pig.impl.streaming.StreamingCommand.HandleSpec;
 import org.apache.pig.impl.util.MultiMap;
+import org.apache.pig.impl.plan.PlanValidationException;
 import org.apache.pig.newplan.Operator;
 import org.apache.pig.newplan.logical.expression.AddExpression;
 import org.apache.pig.newplan.logical.expression.AndExpression;
@@ -103,6 +104,8 @@ private static Log log = LogFactory.getLog( LogicalPlanGenerator.class );
 private LogicalPlanBuilder builder = null;
 
 private boolean inForeachPlan = false;
+
+private boolean inNestedCommand = false;
 
 public LogicalPlan getLogicalPlan() {
     return builder.getPlan();
@@ -351,7 +354,8 @@ type returns[Byte datatype, LogicalSchema logicalSchema]
 ;
 
 simple_type returns[byte datatype]
- : INT { $datatype = DataType.INTEGER; }
+ : BOOLEAN { $datatype = DataType.BOOLEAN; }
+ | INT { $datatype = DataType.INTEGER; }
  | LONG { $datatype = DataType.LONG; }
  | FLOAT { $datatype = DataType.FLOAT; }
  | DOUBLE { $datatype = DataType.DOUBLE; }
@@ -430,7 +434,9 @@ func_name returns[String funcName]
 
 func_args returns[List<String> args]
 @init { $args = new ArrayList<String>(); }
-: ( QUOTEDSTRING { $args.add( builder.unquote( $QUOTEDSTRING.text ) ); } )+
+: ( QUOTEDSTRING { $args.add( builder.unquote( $QUOTEDSTRING.text ) ); } 
+    | MULTILINE_QUOTEDSTRING { $args.add( builder.unquote( $MULTILINE_QUOTEDSTRING.text ) ); }
+  )+
 ;
 
 group_clause returns[String alias]
@@ -448,7 +454,9 @@ scope GScope;
     $group_clause::innerFlags = new ArrayList<Boolean>();
     GROUPTYPE groupType = GROUPTYPE.REGULAR;
     SourceLocation loc = new SourceLocation( (PigParserNode)$group_clause.start );
+    int oldStatementIndex = $statement::inputIndex;
 }
+@after { $statement::inputIndex = oldStatementIndex; }
  : ^( GROUP group_item+ ( group_type { groupType = $group_type.type; ((LOCogroup)$GScope::currentOp).pinOption(LOCogroup.OPTION_GROUPTYPE); } )? partition_clause? )
    {
        $alias = builder.buildGroupOp( loc, (LOCogroup)$GScope::currentOp, $statement::alias, 
@@ -1009,6 +1017,10 @@ scope GScope;
     $join_clause::joinPlans = new MultiMap<Integer, LogicalExpressionPlan>();
     $join_clause::inputAliases = new ArrayList<String>();
     $join_clause::innerFlags = new ArrayList<Boolean>();
+    int oldStatementIndex = $statement::inputIndex;
+}
+@after {
+   $statement::inputIndex=oldStatementIndex;
 }
  : ^( JOIN join_sub_clause join_type? partition_clause? )
    {
@@ -1119,32 +1131,13 @@ scope {
 nested_blk : nested_command* generate_clause
 ;
 
-generate_clause
-scope GScope;
-@init {
-    $GScope::currentOp = builder.createGenerateOp( $foreach_plan::innerPlan );
-    List<LogicalExpressionPlan> plans = new ArrayList<LogicalExpressionPlan>();
-    List<Boolean> flattenFlags = new ArrayList<Boolean>();
-    List<LogicalSchema> schemas = new ArrayList<LogicalSchema>();
-}
- : ^( GENERATE ( flatten_generated_item
-                 {
-                     plans.add( $flatten_generated_item.plan );
-                     flattenFlags.add( $flatten_generated_item.flattenFlag );
-                     schemas.add( $flatten_generated_item.schema );
-                 }
-               )+
-    )
-   {   
-       builder.buildGenerateOp( new SourceLocation( (PigParserNode)$GENERATE ), $foreach_clause::foreachOp, 
-           (LOGenerate)$GScope::currentOp, $foreach_plan::operators,
-           plans, flattenFlags, schemas );
-   }
-;
-
 nested_command
 @init {
     LogicalExpressionPlan exprPlan = new LogicalExpressionPlan();
+    inNestedCommand = true;
+}
+@after {
+	inNestedCommand = false;
 }
  : ^( NESTED_CMD IDENTIFIER nested_op[$IDENTIFIER.text] )
    {
@@ -1164,6 +1157,7 @@ nested_op[String alias] returns[Operator op]
  | nested_distinct[$alias] { $op = $nested_distinct.op; }
  | nested_limit[$alias] { $op = $nested_limit.op; }
  | nested_cross[$alias] { $op = $nested_cross.op; }
+ | nested_foreach[$alias] { $op = $nested_foreach.op; }
 ;
 
 nested_proj[String alias] returns[Operator op]
@@ -1259,6 +1253,48 @@ nested_cross[String alias] returns[Operator op]
    }
 ;
 
+nested_foreach[String alias] returns[Operator op]
+scope {
+    LogicalPlan innerPlan;
+    LOForEach foreachOp;
+}
+@init {
+	Operator inputOp = null;
+	$nested_foreach::innerPlan = new LogicalPlan();
+	$nested_foreach::foreachOp = builder.createNestedForeachOp( $foreach_plan::innerPlan );
+}
+ : ^( FOREACH nested_op_input generate_clause )
+   {
+   		SourceLocation loc = new SourceLocation( (PigParserNode)$FOREACH );
+   		$op = builder.buildNestedForeachOp( loc, (LOForEach)$nested_foreach::foreachOp, $foreach_plan::innerPlan,
+   							$alias, $nested_op_input.op, $nested_foreach::innerPlan);
+   }
+;
+
+generate_clause
+scope GScope;
+@init {
+	$GScope::currentOp = builder.createGenerateOp(inNestedCommand ? $nested_foreach::innerPlan : $foreach_plan::innerPlan );
+    List<LogicalExpressionPlan> plans = new ArrayList<LogicalExpressionPlan>();
+    List<Boolean> flattenFlags = new ArrayList<Boolean>();
+    List<LogicalSchema> schemas = new ArrayList<LogicalSchema>();
+}
+ : ^( GENERATE ( flatten_generated_item
+                 {
+                     plans.add( $flatten_generated_item.plan );
+                     flattenFlags.add( $flatten_generated_item.flattenFlag );
+                     schemas.add( $flatten_generated_item.schema );
+                 }
+               )+
+    )
+   {   
+       builder.buildGenerateOp( new SourceLocation( (PigParserNode)$GENERATE ), 
+       	   inNestedCommand ? $nested_foreach::foreachOp : $foreach_clause::foreachOp, 
+           (LOGenerate)$GScope::currentOp, $foreach_plan::operators,
+           plans, flattenFlags, schemas );
+   }
+;
+
 nested_op_input returns[Operator op]
 @init {
     LogicalExpressionPlan plan = new LogicalExpressionPlan();
@@ -1326,7 +1362,7 @@ split_clause
           SourceLocation loc = new SourceLocation( (PigParserNode)$SPLIT );
           $statement::inputAlias = builder.buildSplitOp( loc, $statement::inputAlias );
       } 
-      split_branch+
+      split_branch+ split_otherwise?
     )
 ;
 
@@ -1342,6 +1378,19 @@ scope GScope;
        builder.buildSplitOutputOp( loc, (LOSplitOutput)$GScope::currentOp, $alias.name,
            $statement::inputAlias, splitPlan );
    }
+;
+
+split_otherwise throws PlanGenerationFailureException
+scope GScope;
+@init {
+    $GScope::currentOp = builder.createSplitOutputOp();
+}
+ : ^( OTHERWISE alias ) 
+  {
+       SourceLocation loc = new SourceLocation( (PigParserNode)$alias.start );
+       builder.buildSplitOtherwiseOp( loc, (LOSplitOutput)$GScope::currentOp, $alias.name,
+           $statement::inputAlias);
+  }
 ;
 
 col_ref[LogicalExpressionPlan plan] returns[LogicalExpression expr]
@@ -1360,6 +1409,10 @@ alias_col_ref[LogicalExpressionPlan plan] returns[LogicalExpression expr]
        SourceLocation loc = new SourceLocation( (PigParserNode)$IDENTIFIER );
        String alias = $IDENTIFIER.text;
        Operator inOp = builder.lookupOperator( $statement::inputAlias );
+       if(null == inOp)
+       {
+           throw new UndefinedAliasException (input,loc,$statement::inputAlias);
+       }
        LogicalSchema schema;
        try {
            schema = ((LogicalRelationalOperator)inOp).getSchema();
@@ -1438,6 +1491,16 @@ scalar returns[Object value, byte type]
  | NULL
    { 
        $type = DataType.NULL;
+   }
+ | TRUE
+   {
+       $type = DataType.BOOLEAN;
+       $value = Boolean.TRUE;
+   }
+ | FALSE
+   {
+       $type = DataType.BOOLEAN;
+       $value = Boolean.FALSE;
    }
 ;
 
@@ -1540,6 +1603,7 @@ eid returns[String id] : rel_str_op { $id = $rel_str_op.id; }
     | EVAL { $id = $EVAL.text; }
     | ASC { $id = $ASC.text; }
     | DESC { $id = $DESC.text; }
+    | BOOLEAN { $id = $BOOLEAN.text; }
     | INT { $id = $INT.text; }
     | LONG { $id = $LONG.text; }
     | FLOAT { $id = $FLOAT.text; }
@@ -1551,6 +1615,8 @@ eid returns[String id] : rel_str_op { $id = $rel_str_op.id; }
     | MAP { $id = $MAP.text; }
     | IS { $id = $IS.text; }
     | NULL { $id = $NULL.text; }
+    | TRUE { $id = $TRUE.text; }
+    | FALSE { $id = $FALSE.text; }
     | STREAM { $id = $STREAM.text; }
     | THROUGH { $id = $THROUGH.text; }
     | STORE { $id = $STORE.text; }
@@ -1568,6 +1634,9 @@ eid returns[String id] : rel_str_op { $id = $rel_str_op.id; }
     | RIGHT { $id = $RIGHT.text; }
     | FULL { $id = $FULL.text; }
     | IDENTIFIER { $id = $IDENTIFIER.text; }
+    | TOBAG { $id = "TOBAG"; }
+    | TOMAP { $id = "TOMAP"; }
+    | TOTUPLE { $id = "TOTUPLE"; }
 ;
 
 // relational operator

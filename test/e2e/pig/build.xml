@@ -29,8 +29,9 @@
   <property name="udf.jar" value="${udf.java.dir}/testudf.jar"/>
   <property name="python.udf.dir" value="${udf.dir}/python"/>
   <property name="params.dir" value="${basedir}/paramfiles"/>
-  <property name="lib.dir" value="${basedir}/lib"/>
+  <property name="e2e.lib.dir" value="${basedir}/lib"/>
   <property name="streaming.dir" value="${basedir}/streaming"/>
+  <property name="macro.dir" value="${basedir}/macros"/>
 
   <property name="tar.name" value="${basedir}/pigtests.tar"/>
   <property name="tar.dir" value="${basedir}/tar"/>
@@ -41,7 +42,7 @@
   <property name="tool.src" value="${basedir}/tools"/>
 
   <property name="harness.dir" value="${basedir}/../harness"/>
-  <property name="harness.tar" value="${harness.dir}/pigharness.tar"/>
+  <property name="harness.tar" value="${harness.dir}/harness.tar"/>
 
   <property name="test.location" value="${basedir}/testdist"/>
   <property name="benchmark.location" value="${test.location}/benchmarks"/>
@@ -76,9 +77,6 @@
 
     <copy todir="${tar.dir}/tests">
         <fileset dir="${test.src}">
-          <exclude name="bigdata.conf"/>
-          <exclude name="grunt.conf"/>
-          <exclude name="streaming_local.conf"/>
         </fileset>
     </copy>
 
@@ -100,7 +98,7 @@
     </copy>
 
     <copy todir="${tar.dir}/lib">
-      <fileset dir="${lib.dir}"/>
+      <fileset dir="${e2e.lib.dir}"/>
     </copy>
 
     <copy todir="${tar.dir}/lib/java">
@@ -109,6 +107,7 @@
 
     <copy todir="${tar.dir}/libexec">
       <fileset dir="${streaming.dir}"/>
+      <fileset dir="${macro.dir}"/>
     </copy>
 
     <copy todir="${tar.dir}/libexec/python">
@@ -129,10 +128,28 @@
 
   <!-- Check that the necessary properties are setup -->
   <target name="property-check">
-    <fail message="Please set the property pig.harness.old.pig to the directory where your old version of Pig is installed"
-      unless="pig.harness.old.pig"/>
-    <fail message="Please set the property pig.harness.cluster to the directory of your hadoop installation"
-      unless="pig.harness.cluster"/>
+    <fail message="Please set the property harness.old.pig to the directory where your old version of Pig is installed"
+      unless="harness.old.pig"/>
+     <fail message="Please set the property harness.cluster.conf to the conf directory of your hadoop installation or harness.hadoop.home to HADOOP_HOME for your Hadoop installation.">
+        <condition>
+            <not>
+                <or>
+                <isset property="harness.cluster.conf"/>
+                <isset property="harness.hadoop.home"/>
+                </or>
+            </not>
+        </condition>
+    </fail>
+    <fail message="Please set the property harness.cluster.bin to the binary executable of your hadoop installation or harness.hadoop.home to HADOOP_HOME for your Hadoop installation.">
+        <condition>
+            <not>
+                <or>
+                <isset property="harness.cluster.bin"/>
+                <isset property="harness.hadoop.home"/>
+                </or>
+            </not>
+        </condition>
+    </fail>
   </target>
 
   <!-- Prep the test area -->
@@ -145,53 +162,69 @@
 
     <chmod perm="ugo+x" type="file">
       <fileset dir="${test.location}/libexec" />
-      <fileset file="${test.location}/pig_test_harness.pl"/>
+      <fileset file="${test.location}/test_harness.pl"/>
     </chmod>
 
   </target>
 
 
-  <target name="test" depends="property-check, udfs, tar, init-test">
+  <!-- By default this runs in mapred mode on a cluster.  To run it in local
+  mode set -Dharness.exec.mode=local -->
+
+  <target name="test-base" depends="property-check, udfs, tar, init-test">
     <!-- If they have not specified tests to run then null it out -->
     <property name="tests.to.run" value=""/>
 
-    <exec executable="./pig_test_harness.pl" dir="${test.location}">
-      <env key="PIG_HARNESS_ROOT" value="."/>
+    <exec executable="./test_harness.pl" dir="${test.location}" failonerror="true">
+      <env key="HARNESS_ROOT" value="."/>
       <env key="PH_LOCAL" value="."/>
       <env key="PH_OUT" value="."/>
       <env key="PH_ROOT" value="."/>
       <env key="PH_PIG" value="${pig.dir}"/>
-      <env key="PH_OLDPIG" value="${pig.harness.old.pig}"/>
-      <env key="PH_CLUSTER" value="${pig.harness.cluster}"/>
+      <env key="PH_OLDPIG" value="${harness.old.pig}"/>
+      <env key="PH_CLUSTER_CONF" value="${harness.cluster.conf}"/>
+      <env key="PH_CLUSTER_BIN" value="${harness.cluster.bin}"/>
       <env key="PH_JYTHON_JAR" value="${jython.jar}"/>
+      <env key="HARNESS_CONF" value="${harness.conf.file}"/>
+      <env key="HADOOP_HOME" value="${harness.hadoop.home}"/>
       <arg line="${tests.to.run}"/>
       <arg value="${test.location}/tests/cmdline.conf"/>
       <arg value="${test.location}/tests/multiquery.conf"/>
       <arg value="${test.location}/tests/negative.conf"/>
       <arg value="${test.location}/tests/nightly.conf"/>
       <arg value="${test.location}/tests/streaming.conf"/>
+      <arg value="${test.location}/tests/streaming_local.conf"/>
       <arg value="${test.location}/tests/turing_jython.conf"/>
+      <arg value="${test.location}/tests/bigdata.conf"/>
+      <arg value="${test.location}/tests/grunt.conf"/>
+      <arg value="${test.location}/tests/macro.conf"/>
     </exec>
   </target>
 
-  <target name="init-deploy">
-     <!-- For now default to the existing cluster deployer, since 
-    it's all there is.  Once the local deployer is available that
-    should be the default. -->
-    <property name="deploy.conf"
-        value="${test.location}/conf/existing_deployer.conf"/>
+  <target name="test">
+    <antcall target="test-base">
+      <param name="harness.conf.file" value="${basedir}/conf/default.conf"/>
+    </antcall>
   </target>
 
-  <target name="deploy-base" depends="property-check, tar, init-test, init-deploy">
-    <exec executable="./pig_test_harness.pl" dir="${test.location}">
-      <env key="PIG_HARNESS_ROOT" value="."/>
+  <target name="test-local">
+    <antcall target="test-base">
+      <param name="harness.conf.file" value="${basedir}/conf/local.conf"/>
+    </antcall>
+  </target>
+
+  <target name="deploy-base" depends="property-check, tar, init-test">
+    <exec executable="./test_harness.pl" dir="${test.location}" failonerror="true">
+      <env key="HARNESS_ROOT" value="."/>
       <env key="PH_LOCAL" value="."/>
       <env key="PH_OUT" value="."/>
       <env key="PH_ROOT" value="."/>
       <env key="PH_PIG" value="${pig.dir}"/>
-      <env key="PH_OLDPIG" value="${pig.harness.old.pig}"/>
-      <env key="PH_CLUSTER" value="${pig.harness.cluster}"/>
+      <env key="PH_OLDPIG" value="${harness.old.pig}"/>
+      <env key="PH_CLUSTER_CONF" value="${harness.cluster.conf}"/>
+      <env key="PH_CLUSTER_BIN" value="${harness.cluster.bin}"/>
       <env key="PH_JYTHON_JAR" value="${jython.jar}"/>
+      <env key="HARNESS_CONF" value="${harness.conf.file}"/>
 
       <arg value="-deploycfg"/>
       <arg value="${deploy.conf}"/>
@@ -206,12 +239,36 @@
   <target name="deploy">
     <antcall target="deploy-base">
       <param name="deploy.opt" value="-deploy"/>
+      <param name="deploy.conf"
+        value="${test.location}/conf/existing_deployer.conf"/>
+      <param name="harness.conf.file" value="${basedir}/conf/default.conf"/>
     </antcall>
   </target>
 
   <target name="undeploy">
     <antcall target="deploy-base">
       <param name="deploy.opt" value="-undeploy"/>
+      <param name="deploy.conf"
+        value="${test.location}/conf/existing_deployer.conf"/>
+      <param name="harness.conf.file" value="${basedir}/conf/default.conf"/>
+    </antcall>
+  </target>
+
+  <target name="deploy-local">
+    <antcall target="deploy-base">
+      <param name="deploy.opt" value="-deploy"/>
+      <param name="deploy.conf"
+        value="${test.location}/conf/local_deployer.conf"/>
+      <param name="harness.conf.file" value="${basedir}/conf/local.conf"/>
+    </antcall>
+  </target>
+
+  <target name="undeploy-local">
+    <antcall target="deploy-base">
+      <param name="deploy.opt" value="-undeploy"/>
+      <param name="deploy.conf"
+        value="${test.location}/conf/local_deployer.conf"/>
+      <param name="harness.conf.file" value="${basedir}/conf/local.conf"/>
     </antcall>
   </target>
 

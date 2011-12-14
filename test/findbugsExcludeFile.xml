@@ -425,4 +425,24 @@
         <Method name = "mergeCollection" />
         <Bug pattern = "NP_GUARANTEED_DEREF_ON_EXCEPTION_PATH" />
     </Match>
+    <Match>
+        <Class name = "org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigGenericMapReduce" />
+        <Bug pattern = "MS_CANNOT_BE_FINAL" />
+    </Match>
+    <Match>
+        <Class name = "org.apache.pig.data.DataType" />
+        <Bug pattern = "NP_BOOLEAN_RETURN_NULL" />
+    </Match>
+    <Match>
+        <Class name = "org.apache.pig.impl.util.CastUtils" />
+        <Bug pattern = "NP_BOOLEAN_RETURN_NULL" />
+    </Match>
+    <Match>
+        <Class name = "org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigOutputCommitter" />
+        <Bug pattern = "REC_CATCH_EXCEPTION" />
+    </Match>
+    <Match>
+        <Class name = "org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigMapBase$IllustratorContext" />
+        <Bug pattern = "SIC_INNER_SHOULD_BE_STATIC" />
+    </Match>
 </FindBugsFilter>

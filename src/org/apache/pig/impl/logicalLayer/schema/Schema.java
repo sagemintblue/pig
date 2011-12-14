@@ -19,24 +19,23 @@ package org.apache.pig.impl.logicalLayer.schema;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collection;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.pig.PigException;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceSchema.ResourceFieldSchema;
 import org.apache.pig.data.DataType;
-//import org.apache.pig.impl.logicalLayer.parser.ParseException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.pig.impl.util.MultiMap;
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.CanonicalNamer;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.util.MultiMap;
 
 /**
  * The Schema class encapsulates the notion of a schema for a relational operator.
@@ -233,7 +232,7 @@ public class Schema implements Serializable, Cloneable {
     
             if (DataType.isSchemaType(castFs.type)) {
                 if(inputType == DataType.BYTEARRAY) {
-                    //good
+                    // good
                 } else if (inputType == castType) {
                     // Don't do the comparison if both embedded schemas are
                     // null.  That will cause Schema.equals to return false,
@@ -249,25 +248,25 @@ public class Schema implements Serializable, Cloneable {
                 }
             } else {
                 if (inputType == castType) {
-                    //good
+                    // good
                 }
-                else if (DataType.isNumberType(inputType) &&
-                    DataType.isNumberType(castType) ) {
-                    //good
+                else if (inputType == DataType.BOOLEAN && (castType == DataType.CHARARRAY
+                        || castType == DataType.BYTEARRAY || DataType.isNumberType(castType))) {
+                    // good
                 }
+                else if (DataType.isNumberType(inputType) && (castType == DataType.CHARARRAY
+                        || castType == DataType.BYTEARRAY || DataType.isNumberType(castType)
+                        || castType == DataType.BOOLEAN)) {
+                    // good
+                }
+                else if (inputType == DataType.CHARARRAY && (castType == DataType.BYTEARRAY
+                        || DataType.isNumberType(castType) || castType == DataType.BOOLEAN)) {
+                    // good
+                } 
                 else if (inputType == DataType.BYTEARRAY) {
-                    //good
+                    // good
                 }
-                else if (  ( DataType.isNumberType(inputType) || 
-                             inputType == DataType.CHARARRAY 
-                           )  &&
-                           (  (castType == DataType.CHARARRAY) ||
-                              (castType == DataType.BYTEARRAY) ||
-                              (DataType.isNumberType(castType))
-                           ) 
-                        ) {
-                    //good
-                } else {
+                else {
                     return false;
                 }
             }
@@ -1872,16 +1871,12 @@ public class Schema implements Serializable, Cloneable {
                     rfs.getSchema() == null ? 
                             null : getPigSchema(rfs.getSchema()), rfs.getType());
             
-            // check if we have a need to set twoLevelAcccessRequired flag
             if(rfs.getType() == DataType.BAG) {
                 if (fs.schema != null) { // allow partial schema
                     if (fs.schema.size() == 1) {
                         FieldSchema innerFs = fs.schema.getField(0);
                         if (innerFs.type != DataType.TUPLE) {
                             ResourceFieldSchema.throwInvalidSchemaException();
-                        }
-                        if (innerFs.schema != null) { // allow partial schema                      
-                            fs.schema.setTwoLevelAccessRequired(true);
                         }
                     } else {
                         ResourceFieldSchema.throwInvalidSchemaException();

@@ -48,6 +48,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.newplan.Operator;
+import org.apache.pig.newplan.logical.optimizer.DanglingNestedNodeRemover;
 import org.apache.pig.newplan.logical.optimizer.LogicalPlanOptimizer;
 import org.apache.pig.newplan.logical.optimizer.SchemaResetter;
 import org.apache.pig.newplan.logical.optimizer.UidResetter;
@@ -65,9 +66,11 @@ public class HExecutionEngine {
     
     public static final String JOB_TRACKER_LOCATION = "mapred.job.tracker";
     private static final String FILE_SYSTEM_LOCATION = "fs.default.name";
+    private static final String ALTERNATIVE_FILE_SYSTEM_LOCATION = "fs.defaultFS";
     
     private static final String HADOOP_SITE = "hadoop-site.xml";
     private static final String CORE_SITE = "core-site.xml";
+    private static final String YARN_SITE = "yarn-site.xml";
     private final Log log = LogFactory.getLog(getClass());
     public static final String LOCAL = "local";
     
@@ -155,6 +158,7 @@ public class HExecutionEngine {
 
             jc = new JobConf();
             jc.addResource("pig-cluster-hadoop-site.xml");
+            jc.addResource(YARN_SITE);
             
             // Trick to invoke static initializer of DistributedFileSystem to add hdfs-default.xml 
             // into configuration
@@ -169,14 +173,20 @@ public class HExecutionEngine {
             jc = new JobConf(false);
             jc.addResource("core-default.xml");
             jc.addResource("mapred-default.xml");
+            jc.addResource("yarn-default.xml");
             recomputeProperties(jc, properties);
             
+            properties.setProperty("mapreduce.framework.name", "local");
             properties.setProperty(JOB_TRACKER_LOCATION, LOCAL );
             properties.setProperty(FILE_SYSTEM_LOCATION, "file:///");
+            properties.setProperty(ALTERNATIVE_FILE_SYSTEM_LOCATION, "file:///");
         }
         
         cluster = properties.getProperty(JOB_TRACKER_LOCATION);
         nameNode = properties.getProperty(FILE_SYSTEM_LOCATION);
+        if (nameNode==null)
+            nameNode = (String)pigContext.getProperties().get(ALTERNATIVE_FILE_SYSTEM_LOCATION);
+
 
         if (cluster != null && cluster.length() > 0) {
             if(!cluster.contains(":") && !cluster.equalsIgnoreCase(LOCAL)) {
@@ -229,10 +239,13 @@ public class HExecutionEngine {
             pod.visit();
         }
         
+        DanglingNestedNodeRemover DanglingNestedNodeRemover = new DanglingNestedNodeRemover( plan );
+        DanglingNestedNodeRemover.visit();
+        
         UidResetter uidResetter = new UidResetter( plan );
         uidResetter.visit();
         
-        SchemaResetter schemaResetter = new SchemaResetter( plan );
+        SchemaResetter schemaResetter = new SchemaResetter( plan, true /*skip duplicate uid check*/ );
         schemaResetter.visit();
         
         HashSet<String> optimizerRules = null;

@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -58,19 +59,26 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.SimpleLayout;
 import org.apache.pig.ExecType;
+import org.apache.pig.LoadCaster;
 import org.apache.pig.PigException;
 import org.apache.pig.PigServer;
+import org.apache.pig.ResourceSchema.ResourceFieldSchema;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MRCompiler;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceLauncher;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOper;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
+import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POStore;
 import org.apache.pig.backend.hadoop.executionengine.util.MapRedUtil;
+import org.apache.pig.builtin.Utf8StorageConverter;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
+import org.apache.pig.data.DefaultBagFactory;
+import org.apache.pig.data.SortedDataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.PigContext;
@@ -80,10 +88,14 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.plan.CompilationMessageCollector;
 import org.apache.pig.impl.util.LogUtils;
+import org.apache.pig.newplan.logical.optimizer.DanglingNestedNodeRemover;
 import org.apache.pig.newplan.logical.optimizer.LogicalPlanPrinter;
 import org.apache.pig.newplan.logical.optimizer.SchemaResetter;
+import org.apache.pig.newplan.logical.relational.LOStore;
 import org.apache.pig.newplan.logical.relational.LogToPhyTranslationVisitor;
 import org.apache.pig.newplan.logical.relational.LogicalPlan;
+import org.apache.pig.newplan.logical.relational.LogicalSchema;
+import org.apache.pig.newplan.logical.relational.LogicalSchema.LogicalFieldSchema;
 import org.apache.pig.newplan.logical.optimizer.UidResetter;
 import org.apache.pig.newplan.logical.rules.LoadStoreFuncDupSignatureValidator;
 import org.apache.pig.newplan.logical.visitor.CastLineageSetter;
@@ -457,14 +469,23 @@ public class Util {
              actualResList.add(actualResultsIt.next());
          }
          
+         compareActualAndExpectedResults(actualResList, expectedResList);
+         
+     }
+
+     
+     
+     static public void compareActualAndExpectedResults(
+            List<Tuple> actualResList, List<Tuple> expectedResList) {
          Collections.sort(actualResList);
          Collections.sort(expectedResList);
 
          Assert.assertEquals("Comparing actual and expected results. ",
                  expectedResList, actualResList);
-     }
+        
+    }
 
-     /**
+    /**
       * Check if subStr is a subString of str . calls org.junit.Assert.fail if it is not 
       * @param str
       * @param subStr
@@ -504,13 +525,20 @@ public class Util {
      public static void checkMessageInException(FrontendException e,
              String expectedErr) {
          PigException pigEx = LogUtils.getPigException(e);
-         if(!pigEx.getMessage().contains(expectedErr)){
-             String msg = "Expected exception message matching '" 
-                 + expectedErr + "' but got '" + pigEx.getMessage() + "'" ;
-             fail(msg);
-         }
+         String message = pigEx.getMessage();
+         checkErrorMessageContainsExpected(message, expectedErr);
+        
      }
 
+     public static void checkErrorMessageContainsExpected(String message, String expectedMessage){
+         if(!message.contains(expectedMessage)){
+             String msg = "Expected error message containing '" 
+                 + expectedMessage + "' but got '" + message + "'" ;
+             fail(msg);
+         } 
+     }
+     
+     
     /**
 	 * Utility method to copy a file form local filesystem to the dfs on
 	 * the minicluster for testing in mapreduce mode
@@ -702,10 +730,14 @@ public class Util {
     public static  LogicalPlan optimizeNewLP( 
             LogicalPlan lp)
     throws FrontendException{
+        DanglingNestedNodeRemover DanglingNestedNodeRemover = new DanglingNestedNodeRemover( lp );
+        DanglingNestedNodeRemover.visit();
+        
         UidResetter uidResetter = new UidResetter( lp );
         uidResetter.visit();
         
-        SchemaResetter schemaResetter = new SchemaResetter( lp );
+        SchemaResetter schemaResetter = 
+                new SchemaResetter( lp, true /*disable duplicate uid check*/ );
         schemaResetter.visit();
         
         LoadStoreFuncDupSignatureValidator loadStoreFuncDupSignatureValidator = new LoadStoreFuncDupSignatureValidator(lp);
@@ -760,6 +792,14 @@ public class Util {
         compile.setAccessible(true);
 
         return (MROperPlan) compile.invoke(launcher, new Object[] { pp, pc });
+    }
+    
+    public static MROperPlan buildMRPlan(String query, PigContext pc) throws Exception {
+        LogicalPlan lp = Util.parse(query, pc);
+        Util.optimizeNewLP(lp);
+        PhysicalPlan pp = Util.buildPhysicalPlanFromNewLP(lp, pc);
+        MROperPlan mrp = Util.buildMRPlanWithOptimizer(pp, pc);
+        return mrp;
     }
     
     public static void registerMultiLineQuery(PigServer pigServer, String query) throws IOException {
@@ -1011,4 +1051,94 @@ public class Util {
     }
 
     
+    static public void checkQueryOutputsAfterSort(Iterator<Tuple> actualResultsIt, 
+            Tuple[] expectedResArray) {
+        List<Tuple> list = new ArrayList<Tuple>();
+        Collections.addAll(list, expectedResArray);
+        checkQueryOutputsAfterSort(actualResultsIt, list);
+    }
+     
+    
+    static private void convertBagToSortedBag(Tuple t) {
+        for (int i=0;i<t.size();i++) {
+           Object obj = null;
+           try {
+               obj = t.get(i);
+           } catch (ExecException e) {
+               // shall not happen
+           }
+           if (obj instanceof DataBag) {
+                DataBag bag = (DataBag)obj;
+                Iterator<Tuple> iter = bag.iterator();
+                DataBag sortedBag = DefaultBagFactory.getInstance().newSortedBag(null);
+                while (iter.hasNext()) {
+                    Tuple t2 = iter.next();
+                    sortedBag.add(t2);
+                    convertBagToSortedBag(t2);
+                }
+                try {
+                    t.set(i, sortedBag);
+                } catch (ExecException e) {
+                    // shall not happen
+                }
+           }
+        }
+    }
+    
+    static public void checkQueryOutputsAfterSortRecursive(Iterator<Tuple> actualResultsIt, 
+            String[] expectedResArray, String schemaString) throws IOException {
+        LogicalSchema resultSchema = org.apache.pig.impl.util.Utils.parseSchema(schemaString);
+        checkQueryOutputsAfterSortRecursive(actualResultsIt, expectedResArray, resultSchema);
+    }
+          /**
+     * Helper function to check if the result of a Pig Query is in line with 
+     * expected results. It sorts actual and expected string results before comparison
+     * 
+     * @param actualResultsIt Result of the executed Pig query
+     * @param expectedResArray Expected string results to validate against
+     * @param fs fieldSchema of expecteResArray
+     * @throws IOException 
+     */
+    static public void checkQueryOutputsAfterSortRecursive(Iterator<Tuple> actualResultsIt, 
+            String[] expectedResArray, LogicalSchema schema) throws IOException {
+        LogicalFieldSchema fs = new LogicalFieldSchema("tuple", schema, DataType.TUPLE);
+        ResourceFieldSchema rfs = new ResourceFieldSchema(fs);
+        
+        LoadCaster caster = new Utf8StorageConverter();
+        List<Tuple> actualResList = new ArrayList<Tuple>();
+        while(actualResultsIt.hasNext()){
+            actualResList.add(actualResultsIt.next());
+        }
+        
+        List<Tuple> expectedResList = new ArrayList<Tuple>();
+        for (String str : expectedResArray) {
+            Tuple newTuple = caster.bytesToTuple(str.getBytes(), rfs);
+            expectedResList.add(newTuple);
+        }
+        
+        for (Tuple t : actualResList) {
+            convertBagToSortedBag(t);
+        }
+        
+        for (Tuple t : expectedResList) {
+            convertBagToSortedBag(t);
+        }
+        
+        Collections.sort(actualResList);
+        Collections.sort(expectedResList);
+        
+        Assert.assertEquals("Comparing actual and expected results. ",
+                expectedResList, actualResList);
+    }
+    
+    public static String readFile(File file) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        String result = "";
+        String line;
+        while ((line=reader.readLine())!=null) {
+            result += line;
+            result += "\n";
+        }
+        return result;
+    }
 }

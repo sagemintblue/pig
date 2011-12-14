@@ -177,7 +177,7 @@ public class PigRecordReader extends RecordReader<Text, Tuple> {
             loadfunc.prepareToRead(curReader, pigSplit);
         }
                 
-        if (pigSplit.isMultiInputs()) { 
+        if (pigSplit.isMultiInputs() && !pigSplit.disableCounter()) { 
             counterName = getMultiInputsCounerName(pigSplit, inputSpecificConf);
         }
     }
@@ -225,6 +225,7 @@ public class PigRecordReader extends RecordReader<Text, Tuple> {
           
 
             curReader =  inputformat.createRecordReader(pigSplit.getWrappedSplit(idx), context);
+            LOG.info("Current split being processed "+pigSplit.getWrappedSplit(idx));
 
             if (idx > 0) {
                 // initialize() for the first RecordReader will be called by MapTask;

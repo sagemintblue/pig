@@ -47,6 +47,7 @@ import org.apache.pig.CollectableLoadFunc;
 import org.apache.pig.OrderedLoadFunc;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
+import org.apache.pig.backend.hadoop.executionengine.shims.HadoopShims;
 import org.apache.pig.backend.hadoop.executionengine.util.MapRedUtil;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.PigContext;
@@ -248,10 +249,9 @@ public class PigInputFormat extends InputFormat<Text, Tuple> {
                 FuncSpec loadFuncSpec = inputs.get(i).getFuncSpec();
                 LoadFunc loadFunc = (LoadFunc) PigContext.instantiateFuncFromSpec(
                         loadFuncSpec);
-                boolean combinable = !(loadFunc instanceof MergeJoinIndexer) &&
-                !(IndexableLoadFunc.class.isAssignableFrom(loadFunc.getClass())) &&
-                !(CollectableLoadFunc.class.isAssignableFrom(loadFunc.getClass()) &&
-                    OrderedLoadFunc.class.isAssignableFrom(loadFunc.getClass()));
+                boolean combinable = !(loadFunc instanceof MergeJoinIndexer
+                                    || loadFunc instanceof IndexableLoadFunc
+                                    || (loadFunc instanceof CollectableLoadFunc && loadFunc instanceof OrderedLoadFunc));
                 if (combinable)
                     combinable = !conf.getBoolean("pig.noSplitCombination", false);
                 Configuration confClone = new Configuration(conf);
@@ -267,7 +267,7 @@ public class PigInputFormat extends InputFormat<Text, Tuple> {
                 // get the InputFormat from it and ask for splits
                 InputFormat inpFormat = loadFunc.getInputFormat();
                 List<InputSplit> oneInputSplits = inpFormat.getSplits(
-                        new JobContext(inputSpecificJob.getConfiguration(), 
+                        HadoopShims.createJobContext(inputSpecificJob.getConfiguration(), 
                                 jobcontext.getJobID()));
                 List<InputSplit> oneInputPigSplits = getPigSplits(
                         oneInputSplits, i, inpTargets.get(i), fs.getDefaultBlockSize(), combinable, confClone);
@@ -292,9 +292,16 @@ public class PigInputFormat extends InputFormat<Text, Tuple> {
         // also passing the multi-input flag to the back-end so that 
         // the multi-input record counters can be created 
         int m = inputs.size();        
+        
+        boolean disableCounter = conf.getBoolean("pig.disable.counter", false);
+        if ((m > 1) && disableCounter) {
+            log.info("Disable Pig custom input counters");
+        }
+        
         for (InputSplit split : splits) {
             ((PigSplit) split).setTotalSplits(n);
             if (m > 1) ((PigSplit) split).setMultiInputs(true);
+            ((PigSplit) split).setDisableCounter(disableCounter);
         }
         
         return splits;

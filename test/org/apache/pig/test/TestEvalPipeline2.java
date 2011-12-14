@@ -898,8 +898,8 @@ public class TestEvalPipeline2 {
             pigServer.openIterator("c");
         } catch (Exception e) {
             PigException pe = LogUtils.getPigException(e);
-            Assert.assertTrue(pe.getErrorCode()==1031);
-            Assert.assertTrue(pe.getMessage().contains("Incompatable schema"));
+            Util.checkStrContainsSubStr(pe.getMessage(), "ERROR 1031");
+            Util.checkStrContainsSubStr(pe.getMessage(), "Incompatable schema");
             return;
         }
         Assert.fail();
@@ -1541,5 +1541,143 @@ public class TestEvalPipeline2 {
         Assert.assertFalse(iter.hasNext());
         
         pigServer.getPigContext().getProperties().remove("pig.optimizer.rules");
+    }
+    
+    // See PIG-2159
+    @Test
+    public void testUnionOnSchemaUidGeneration() throws Exception{
+        String[] input1 = {
+        		"100,101,102,103,104,105",
+        		"110,111,112,113,114,115"
+        };
+        
+        String[] input2 = {
+        		"200,201,202,203,204,205",
+        		"210,211,212,213,214,215"
+        };
+        
+        String[] input0 = {
+        		"200,201,202,203,204,205",
+        		"210,211,212,213,214,215"
+        };
+        
+        Util.createInputFile(cluster, "table_testUnionOnSchemaUidGeneration1", input1);
+        Util.createInputFile(cluster, "table_testUnionOnSchemaUidGeneration2", input2);
+        Util.createInputFile(cluster, "table_testUnionOnSchemaUidGeneration0", input0);
+        
+        pigServer.registerQuery("A = load 'table_testUnionOnSchemaUidGeneration1' using PigStorage(',')  as (f1:int,f2:int,f3:int,f4:long,f5:double);");
+        pigServer.registerQuery("B = load 'table_testUnionOnSchemaUidGeneration2' using PigStorage(',')  as (f1:int,f2:int,f3:int,f4:long,f5:double);");
+        pigServer.registerQuery("C = load 'table_testUnionOnSchemaUidGeneration0' using PigStorage(',')  as (f1:int,f2:int,f3:int);");
+        pigServer.registerQuery("U = UNION ONSCHEMA A,B;");
+        pigServer.registerQuery("J = join C by (f1,f2,f3) LEFT OUTER, U by (f1,f2,f3);");
+        pigServer.registerQuery("Porj = foreach J generate C::f1 as f1 ,C::f2 as f2,C::f3 as f3,U::f4 as f4,U::f5 as f5;");
+        pigServer.registerQuery("G = GROUP Porj by (f1,f2,f3,f5);");
+        pigServer.registerQuery("Final = foreach G generate SUM(Porj.f4) as total;");
+
+        Iterator<Tuple> iter = pigServer.openIterator("Final");
+        
+        Tuple t = iter.next();
+        Assert.assertTrue(t.toString().equals("(203)"));
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("(213)"));
+        
+        Assert.assertFalse(iter.hasNext());
+        
+    }
+    
+    // See PIG-2185
+    @Test
+    public void testProjectEmptyBag() throws Exception{
+        String[] input = {
+                "{(12)}",
+                "{(23)}",
+                ""
+        };
+        
+        Util.createInputFile(cluster, "table_testProjectEmptyBag", input);
+        
+        pigServer.registerQuery("A = load 'table_testProjectEmptyBag' as (bg:bag{});");
+        pigServer.registerQuery("B = FOREACH A { x = FILTER bg BY $0 == '12'; GENERATE x; };");
+
+        Iterator<Tuple> iter = pigServer.openIterator("B");
+        
+        Tuple t = iter.next();
+        Assert.assertTrue(t.toString().equals("({(12)})"));
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("({})"));
+        
+        Assert.assertTrue(iter.hasNext());
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("({})"));
+        
+        Assert.assertFalse(iter.hasNext());
+    }
+    
+    // See PIG-2231
+    @Test
+    public void testLimitFlatten() throws Exception{
+        String[] input = {
+                "1\tA",
+                "1\tB",
+                "2\tC",
+                "3\tD",
+                "3\tE",
+                "3\tF"
+        };
+        
+        Util.createInputFile(cluster, "table_testLimitFlatten", input);
+        
+        pigServer.registerQuery("data = load 'table_testLimitFlatten' as (k,v);");
+        pigServer.registerQuery("grouped = GROUP data BY k;");
+        pigServer.registerQuery("selected = LIMIT grouped 2;");
+        pigServer.registerQuery("flattened = FOREACH selected GENERATE FLATTEN (data);");
+
+        Iterator<Tuple> iter = pigServer.openIterator("flattened");
+        
+        Tuple t = iter.next();
+        Assert.assertTrue(t.toString().equals("(1,A)"));
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("(1,B)"));
+        
+        Assert.assertTrue(iter.hasNext());
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("(2,C)"));
+        
+        Assert.assertFalse(iter.hasNext());
+    }
+    
+    // See PIG-2237
+    @Test
+    public void testLimitAutoReducer() throws Exception{
+        String[] input = {
+                "1\tA",
+                "4\tB",
+                "2\tC",
+                "3\tD",
+                "6\tE",
+                "5\tF"
+        };
+        
+        Util.createInputFile(cluster, "table_testLimitAutoReducer", input);
+        
+        pigServer.getPigContext().getProperties().setProperty("pig.exec.reducers.bytes.per.reducer", "9");
+        pigServer.registerQuery("A = load 'table_testLimitAutoReducer' as (a0, a1);");
+        pigServer.registerQuery("B = order A by a0;");
+        pigServer.registerQuery("C = limit B 2;");
+        
+        Iterator<Tuple> iter = pigServer.openIterator("C");
+        
+        Tuple t = iter.next();
+        Assert.assertTrue(t.toString().equals("(1,A)"));
+        
+        t = iter.next();
+        Assert.assertTrue(t.toString().equals("(2,C)"));
+        
+        Assert.assertFalse(iter.hasNext());
     }
 }

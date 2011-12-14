@@ -84,6 +84,7 @@ import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOpe
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POStream;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POUnion;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.util.PlanHelper;
+import org.apache.pig.backend.hadoop.executionengine.shims.HadoopShims;
 import org.apache.pig.backend.hadoop.executionengine.util.MapRedUtil;
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.PigContext;
@@ -110,6 +111,7 @@ import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.UriUtil;
 import org.apache.pig.impl.util.Utils;
+import org.apache.pig.newplan.logical.relational.LOJoin;
 
 /**
  * The compiler that compiles a given physical plan
@@ -341,10 +343,6 @@ public class MRCompiler extends PhyPlanVisitor {
         }
         
         connectSoftLink();
-        
-        LimitAdjuster la = new LimitAdjuster(MRPlan);
-        la.visit();
-        la.adjust();
         
         return MRPlan;
     }
@@ -950,89 +948,6 @@ public class MRCompiler extends PhyPlanVisitor {
         }
     }
     
-    private void connectMapToReduceLimitedSort(MapReduceOper mro, MapReduceOper sortMROp) throws PlanException, VisitorException
-    {
-        POLocalRearrange slr = (POLocalRearrange)sortMROp.mapPlan.getLeaves().get(0);
-        
-        POLocalRearrange lr = null;
-        try {
-            lr = slr.clone();
-        } catch (CloneNotSupportedException e) {
-            int errCode = 2147;
-            String msg = "Error cloning POLocalRearrange for limit after sort";
-            throw new MRCompilerException(msg, errCode, PigException.BUG, e);
-        }
-        
-        mro.mapPlan.addAsLeaf(lr);
-        
-        POPackage spkg = (POPackage)sortMROp.reducePlan.getRoots().get(0);
-
-        POPackage pkg = null;
-        try {
-            pkg = spkg.clone();
-        } catch (Exception e) {
-            int errCode = 2148;
-            String msg = "Error cloning POPackageLite for limit after sort";
-            throw new MRCompilerException(msg, errCode, PigException.BUG, e);
-        }
-        mro.reducePlan.add(pkg);
-        mro.reducePlan.addAsLeaf(getPlainForEachOP());
-    }
-    
-    private void simpleConnectMapToReduce(MapReduceOper mro) throws PlanException
-    {
-        PhysicalPlan ep = new PhysicalPlan();
-        POProject prjStar = new POProject(new OperatorKey(scope,nig.getNextNodeId(scope)));
-        prjStar.setResultType(DataType.TUPLE);
-        prjStar.setStar(true);
-        ep.add(prjStar);
-        
-        List<PhysicalPlan> eps = new ArrayList<PhysicalPlan>();
-        eps.add(ep);
-        
-        POLocalRearrange lr = new POLocalRearrange(new OperatorKey(scope,nig.getNextNodeId(scope)));
-        try {
-            lr.setIndex(0);
-        } catch (ExecException e) {
-            int errCode = 2058;
-            String msg = "Unable to set index on the newly created POLocalRearrange.";
-            throw new PlanException(msg, errCode, PigException.BUG, e);
-        }
-        lr.setKeyType(DataType.TUPLE);
-        lr.setPlans(eps);
-        lr.setResultType(DataType.TUPLE);
-        
-        mro.mapPlan.addAsLeaf(lr);
-        
-        POPackage pkg = new POPackage(new OperatorKey(scope,nig.getNextNodeId(scope)));
-        pkg.setKeyType(DataType.TUPLE);
-        pkg.setNumInps(1);
-        boolean[] inner = {false};
-        pkg.setInner(inner);
-        mro.reducePlan.add(pkg);
-        
-        mro.reducePlan.addAsLeaf(getPlainForEachOP());
-    }
-    
-    private POForEach getPlainForEachOP()
-    {
-        List<PhysicalPlan> eps1 = new ArrayList<PhysicalPlan>();
-        List<Boolean> flat1 = new ArrayList<Boolean>();
-        PhysicalPlan ep1 = new PhysicalPlan();
-        POProject prj1 = new POProject(new OperatorKey(scope,nig.getNextNodeId(scope)));
-        prj1.setResultType(DataType.TUPLE);
-        prj1.setStar(false);
-        prj1.setColumn(1);
-        prj1.setOverloaded(true);
-        ep1.add(prj1);
-        eps1.add(ep1);
-        flat1.add(true);
-        POForEach fe = new POForEach(new OperatorKey(scope, nig
-                .getNextNodeId(scope)), -1, eps1, flat1);
-        fe.setResultType(DataType.BAG);
-        return fe;
-    }
-    
     @Override
     public void visitLimit(POLimit op) throws VisitorException{
         try{
@@ -1053,7 +968,7 @@ public class MRCompiler extends PhyPlanVisitor {
                 
                 if (mro.reducePlan.isEmpty())
                 {
-                    simpleConnectMapToReduce(mro);
+                    MRUtil.simpleConnectMapToReduce(mro, scope, nig);
                     mro.requestedParallelism = 1;
                     if (!pigContext.inIllustrator) {
                         POLimit pLimit2 = new POLimit(new OperatorKey(scope,nig.getNextNodeId(scope)));
@@ -1354,8 +1269,7 @@ public class MRCompiler extends PhyPlanVisitor {
                             Job job = new Job(conf);
                             loader.setLocation(location, job);
                             InputFormat inf = loader.getInputFormat();
-                            List<InputSplit> splits = inf.getSplits(new JobContext(
-                                    job.getConfiguration(), job.getJobID()));
+                            List<InputSplit> splits = inf.getSplits(HadoopShims.cloneJobContext(job));
                             List<List<InputSplit>> results = MapRedUtil
                             .getCombinePigSplits(splits, fs
                                     .getDefaultBlockSize(), conf);
@@ -1574,7 +1488,7 @@ public class MRCompiler extends PhyPlanVisitor {
         
         // After getting an index entry in each mapper, send all of them to one 
         // reducer where they will be sorted on the way by Hadoop.
-        simpleConnectMapToReduce(indexerMROp);
+        MRUtil.simpleConnectMapToReduce(indexerMROp, scope, nig);
         
         indexerMROp.requestedParallelism = 1; // we need exactly one reducer for indexing job.
         
@@ -1750,10 +1664,22 @@ public class MRCompiler extends PhyPlanVisitor {
                     }
                 }
             } else {
+
+                LoadFunc loadFunc = rightLoader.getLoadFunc();
+
+                //Replacing POLoad with indexer is disabled for 'merge-sparse' joins.  While 
+                //this feature would be useful, the current implementation of DefaultIndexableLoader
+                //is not designed to handle multiple calls to seekNear.  Specifically, it rereads the entire index
+                //for each call.  Some refactoring of this class is required - and then the check below could be removed.
+		if (joinOp.getJoinType() == LOJoin.JOINTYPE.MERGESPARSE) {
+                    int errCode = 1104;
+                    String errMsg = "Right input of merge-join must implement IndexableLoadFunc. " +
+                    "The specified loader " + loadFunc + " doesn't implement it";
+                    throw new MRCompilerException(errMsg,errCode);
+		}
                 
                 // Replace POLoad with  indexer.
 
-                LoadFunc loadFunc = rightLoader.getLoadFunc();
                 if (! (OrderedLoadFunc.class.isAssignableFrom(loadFunc.getClass()))){
                     int errCode = 1104;
                     String errMsg = "Right input of merge-join must implement " +
@@ -1779,7 +1705,7 @@ public class MRCompiler extends PhyPlanVisitor {
                 // Loader of mro will return a tuple of form - 
                 // (keyFirst1, keyFirst2, .. , position, splitIndex) See MergeJoinIndexer
 
-                simpleConnectMapToReduce(rightMROpr);
+                MRUtil.simpleConnectMapToReduce(rightMROpr, scope, nig);
                 rightMROpr.useTypedComparator(true);
                 
                 POStore st = getStore();
@@ -2846,158 +2772,6 @@ public class MRCompiler extends PhyPlanVisitor {
             getLog(LastInputStreamingOptimizer.class).info("Rewrite: POPackage->POForEach to POJoinPackage");
         }
 
-    }
-    
-    private class LimitAdjuster extends MROpPlanVisitor {
-        ArrayList<MapReduceOper> opsToAdjust = new ArrayList<MapReduceOper>();  
-
-        LimitAdjuster(MROperPlan plan) {
-            super(plan, new DepthFirstWalker<MapReduceOper, MROperPlan>(plan));
-        }
-
-        @Override
-        public void visitMROp(MapReduceOper mr) throws VisitorException {
-            // Look for map reduce operators which contains limit operator.
-            // If so and the requestedParallelism > 1, add one additional map-reduce
-            // operator with 1 reducer into the original plan
-            if ((mr.limit!=-1 || mr.limitPlan!=null) && mr.requestedParallelism!=1)
-            {
-                opsToAdjust.add(mr);
-            }
-        }
-        
-        public void adjust() throws IOException, PlanException
-        {
-            for (MapReduceOper mr:opsToAdjust)
-            {
-                if (mr.reducePlan.isEmpty()) continue;
-                List<PhysicalOperator> mpLeaves = mr.reducePlan.getLeaves();
-                if (mpLeaves.size() != 1) {
-                    int errCode = 2024; 
-                    String msg = "Expected reduce to have single leaf. Found " + mpLeaves.size() + " leaves.";
-                    throw new MRCompilerException(msg, errCode, PigException.BUG);
-                }
-                PhysicalOperator mpLeaf = mpLeaves.get(0);
-                if (!pigContext.inIllustrator)
-                if (!(mpLeaf instanceof POStore)) {
-                    int errCode = 2025;
-                    String msg = "Expected leaf of reduce plan to " +
-                        "always be POStore. Found " + mpLeaf.getClass().getSimpleName();
-                    throw new MRCompilerException(msg, errCode, PigException.BUG);
-                }
-                FileSpec oldSpec = ((POStore)mpLeaf).getSFile();
-                boolean oldIsTmpStore = ((POStore)mpLeaf).isTmpStore();
-                
-                FileSpec fSpec = getTempFileSpec();
-                ((POStore)mpLeaf).setSFile(fSpec);
-                ((POStore)mpLeaf).setIsTmpStore(true);
-                mr.setReduceDone(true);
-                MapReduceOper limitAdjustMROp = getMROp();
-                POLoad ld = getLoad();
-                ld.setLFile(fSpec);
-                limitAdjustMROp.mapPlan.add(ld);
-                if (mr.isGlobalSort()) {
-                    connectMapToReduceLimitedSort(limitAdjustMROp, mr);
-                } else {
-                    simpleConnectMapToReduce(limitAdjustMROp);
-                }
-                POLimit pLimit2 = new POLimit(new OperatorKey(scope,nig.getNextNodeId(scope)));
-                pLimit2.setLimit(mr.limit);
-                pLimit2.setLimitPlan(mr.limitPlan);
-                limitAdjustMROp.reducePlan.addAsLeaf(pLimit2);
-
-                // If the operator we're following has global sort set, we
-                // need to indicate that this is a limit after a sort.
-                // This will assure that we get the right sort comparator
-                // set.  Otherwise our order gets wacked (PIG-461).
-                if (mr.isGlobalSort()) 
-                {
-                    fixProjectionAfterLimit(limitAdjustMROp, mr);
-                    limitAdjustMROp.setLimitAfterSort(true);
-                    limitAdjustMROp.setSortOrder(mr.getSortOrder());
-                }
-                
-                POStore st = getStore();
-                st.setSFile(oldSpec);
-                st.setIsTmpStore(oldIsTmpStore);
-                limitAdjustMROp.reducePlan.addAsLeaf(st);
-                limitAdjustMROp.requestedParallelism = 1;
-                limitAdjustMROp.setLimitOnly(true);
-                
-                List<MapReduceOper> successorList = MRPlan.getSuccessors(mr);
-                MapReduceOper successors[] = null;
-                
-                // Save a snapshot for successors, since we will modify MRPlan, 
-                // use the list directly will be problematic
-                if (successorList!=null && successorList.size()>0)
-                {
-                    successors = new MapReduceOper[successorList.size()];
-                    int i=0;
-                    for (MapReduceOper op:successorList)
-                        successors[i++] = op;
-                }
-                
-                // Process UDFs
-                for (String udf : mr.UDFs) {
-                    if (!limitAdjustMROp.UDFs.contains(udf)) {
-                        limitAdjustMROp.UDFs.add(udf);
-                    }
-                }
-                
-                MRPlan.add(limitAdjustMROp);
-                MRPlan.connect(mr, limitAdjustMROp);
-                
-                if (successors!=null)
-                {
-                    for (int i=0;i<successors.length;i++)
-                    {
-                        MapReduceOper nextMr = successors[i];
-                        if (nextMr!=null)
-                            MRPlan.disconnect(mr, nextMr);
-                        
-                        if (nextMr!=null)
-                            MRPlan.connect(limitAdjustMROp, nextMr);                        
-                    }
-                }
-            }
-        }
-        
-        // Move all operators between POLimit and POStore in reducer plan 
-        // from sortMROp to the new MROp so that the sort keys aren't lost by 
-        // projection in sortMROp.
-        private void fixProjectionAfterLimit(MapReduceOper mro,
-                MapReduceOper sortMROp) throws PlanException, VisitorException {
-                        
-            PhysicalOperator op = sortMROp.reducePlan.getRoots().get(0);
-            assert(op instanceof POPackage);
-            
-            op = sortMROp.reducePlan.getSuccessors(op).get(0);
-            assert(op instanceof POForEach);
-            
-            while (true) {
-                List<PhysicalOperator> succs = sortMROp.reducePlan
-                        .getSuccessors(op);
-                if (succs==null) break;
-                op = succs.get(0);
-                if (op instanceof POLimit) {
-                    // find operator after POLimit
-                    op = sortMROp.reducePlan.getSuccessors(op).get(0);
-                    break;
-                }
-            }
-            
-            while (true) {
-                if (op instanceof POStore) break;
-                PhysicalOperator opToMove = op;
-                List<PhysicalOperator> succs = sortMROp.reducePlan
-                        .getSuccessors(op);
-                op = succs.get(0);
-                
-                sortMROp.reducePlan.removeAndReconnect(opToMove);
-                mro.reducePlan.addAsLeaf(opToMove);
-                
-            }
-        }
     }
 
     private static class FindKeyTypeVisitor extends PhyPlanVisitor {

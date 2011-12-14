@@ -17,11 +17,18 @@
  */
 package org.apache.pig.test;
 
+import java.io.IOException;
 import java.util.Properties;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.ExecType;
+import org.apache.pig.Expression;
+import org.apache.pig.LoadFunc;
+import org.apache.pig.LoadMetadata;
+import org.apache.pig.ResourceSchema;
+import org.apache.pig.ResourceStatistics;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOper;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
@@ -29,17 +36,25 @@ import org.apache.pig.backend.hadoop.executionengine.physicalLayer.expressionOpe
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POSort;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POStore;
+import org.apache.pig.builtin.PigStorage;
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.PigContext;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.util.Utils;
 import org.apache.pig.newplan.Operator;
 import org.apache.pig.newplan.logical.expression.LogicalExpression;
 import org.apache.pig.newplan.logical.relational.LOCogroup;
+import org.apache.pig.newplan.logical.relational.LOFilter;
 import org.apache.pig.newplan.logical.relational.LOForEach;
+import org.apache.pig.newplan.logical.relational.LOLoad;
 import org.apache.pig.newplan.logical.relational.LOSort;
 import org.apache.pig.newplan.logical.relational.LOStore;
 import org.apache.pig.newplan.logical.relational.LogicalPlan;
 import org.apache.pig.newplan.logical.relational.LogicalSchema;
 import org.apache.pig.newplan.logical.relational.LogicalSchema.LogicalFieldSchema;
+import org.apache.pig.parser.ParserException;
+import org.apache.pig.test.TestPartitionFilterPushDown.TestLoader;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -174,5 +189,125 @@ public class TestPlanGeneration extends junit.framework.TestCase {
         MapReduceOper mrOper = mrp.getLeaves().get(0);
         poStore = (POStore)mrOper.mapPlan.getLeaves().get(0);
         assert(poStore.getAlias().equals("B"));
+    }
+    
+    // See PIG-2119
+    @Test
+    public void testDanglingNestedNode() throws Exception  {
+        String query = "a = load 'b.txt' AS (id:chararray, num:int); " +
+            "b = group a by id;" +
+            "c = foreach b {" +
+            "  d = order a by num DESC;" +
+            "  n = COUNT(a);" +
+            "  e = limit d 1;" +
+            "  generate n;" +
+            "};";
+        
+        LogicalPlan lp = Util.parse(query, pc);
+        Util.optimizeNewLP(lp);
+    }
+    
+    public static class SchemaLoader extends PigStorage implements LoadMetadata {
+
+        Schema schema;
+        public SchemaLoader(String schemaString) throws ParserException {
+            schema = Utils.getSchemaFromString(schemaString);
+        }
+        @Override
+        public ResourceSchema getSchema(String location, Job job)
+                throws IOException {
+            return new ResourceSchema(schema);
+        }
+
+        @Override
+        public ResourceStatistics getStatistics(String location, Job job)
+                throws IOException {
+            return null;
+        }
+
+        @Override
+        public String[] getPartitionKeys(String location, Job job)
+                throws IOException {
+            return null;
+        }
+
+        @Override
+        public void setPartitionFilter(Expression partitionFilter)
+                throws IOException {
+        }
+    }
+    
+    @Test
+    public void testLoaderWithSchema() throws Exception {
+        String query = "a = load 'foo' using " + SchemaLoader.class.getName() + "('name,age,gpa');\n"
+                + "b = filter a by age==20;"
+                + "store b into 'output';";
+        LogicalPlan lp = Util.parse(query, pc);
+        Util.optimizeNewLP(lp);
+        
+        LOLoad loLoad = (LOLoad)lp.getSources().get(0);
+        LOFilter loFilter = (LOFilter)lp.getSuccessors(loLoad).get(0);
+        LOStore loStore = (LOStore)lp.getSuccessors(loFilter).get(0);
+        
+        Assert.assertTrue(lp.getSuccessors(loStore)==null);
+    }
+    
+    public static class PartitionedLoader extends PigStorage implements LoadMetadata {
+
+        Schema schema;
+        String[] partCols;
+        static Expression partFilter = null;
+        
+        public PartitionedLoader(String schemaString, String commaSepPartitionCols) 
+        throws ParserException {
+            schema = Utils.getSchemaFromString(schemaString);
+            partCols = commaSepPartitionCols.split(",");
+        }
+
+        @Override
+        public ResourceSchema getSchema(String location, Job job)
+        throws IOException {
+            return new ResourceSchema(schema);
+        }
+
+        @Override
+        public ResourceStatistics getStatistics(String location,
+                Job job) throws IOException {
+            return null;
+        }
+
+        @Override
+        public void setPartitionFilter(Expression partitionFilter)
+        throws IOException {
+            partFilter = partitionFilter;            
+        }
+
+        @Override
+        public String[] getPartitionKeys(String location, Job job)
+                throws IOException {
+            return partCols;
+        }
+        
+        public Expression getPartFilter() {
+            return partFilter;
+        }
+
+    }
+    
+    @Test
+    // See PIG-2339
+    public void testPartitionFilterOptimizer() throws Exception {
+        String query = "a = load 'foo' using " + PartitionedLoader.class.getName() + 
+                "('name:chararray, dt:chararray', 'dt');\n" +
+            "b = filter a by dt=='2011';\n" +
+            "store b into 'output';";
+            
+        LogicalPlan lp = Util.parse(query, pc);
+        Util.optimizeNewLP(lp);
+        
+        LOLoad loLoad = (LOLoad)lp.getSources().get(0);
+        LOStore loStore = (LOStore)lp.getSuccessors(loLoad).get(0);
+        Assert.assertTrue(((PartitionedLoader)loLoad.getLoadFunc()).getPartFilter()!=null);
+        Assert.assertTrue(loStore.getAlias().equals("b"));
     }
 }

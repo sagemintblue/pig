@@ -162,7 +162,8 @@ type : simple_type | tuple_type | bag_type | map_type
 ;
 
 simple_type 
-    : INT { sb.append($INT.text); }
+    : BOOLEAN { sb.append($BOOLEAN.text); }
+    | INT { sb.append($INT.text); }
     | LONG { sb.append($LONG.text); }
     | FLOAT { sb.append($FLOAT.text); }
     | DOUBLE { sb.append($DOUBLE.text); }
@@ -416,6 +417,7 @@ nested_op : nested_proj
           | nested_distinct
           | nested_limit
           | nested_cross
+          | nested_foreach
 ;
 
 nested_proj 
@@ -443,6 +445,10 @@ nested_cross
     : ^( CROSS { sb.append($CROSS.text).append(" "); }  nested_op_input_list )
 ;
 
+nested_foreach
+	: ^( FOREACH { sb.append($FOREACH.text).append(" "); }  nested_op_input generate_clause )
+;
+
 nested_op_input : col_ref | nested_proj
 ;
 
@@ -464,11 +470,15 @@ mr_clause
 
 split_clause 
     : ^( SPLIT  { sb.append($SPLIT.text).append(" "); }
-        rel { sb.append(" INTO "); } split_branch ( { sb.append(", "); } split_branch)+ )
+        rel { sb.append(" INTO "); } split_branch ( { sb.append(", "); } split_branch )* split_otherwise? )
 ;
 
 split_branch
     : ^( SPLIT_BRANCH alias { sb.append(" IF "); } cond )    
+;
+
+split_otherwise 
+    : ^( OTHERWISE { sb.append($OTHERWISE.text).append(" "); } alias ) 
 ;
 
 col_ref : alias_col_ref | dollar_col_ref
@@ -491,7 +501,9 @@ literal : scalar | map | bag | tuple
 
 scalar : num_scalar
        | QUOTEDSTRING { sb.append($QUOTEDSTRING.text); }
-       | NULL { sb.append($NULL.text); }    
+       | NULL { sb.append($NULL.text); } 
+       | TRUE { sb.append($TRUE.text); }
+       | FALSE { sb.append($FALSE.text); }   
 ;
 
 num_scalar : ( MINUS { sb.append( "-" ); } )?
@@ -559,6 +571,7 @@ eid : rel_str_op
     | EVAL      { sb.append($EVAL.text); }
     | ASC       { sb.append($ASC.text); }
     | DESC      { sb.append($DESC.text); }
+    | BOOLEAN   { sb.append($BOOLEAN.text); }
     | INT       { sb.append($INT.text); }
     | LONG      { sb.append($LONG.text); }
     | FLOAT     { sb.append($FLOAT.text); }
@@ -570,6 +583,8 @@ eid : rel_str_op
     | MAP       { sb.append($MAP.text); }
     | IS        { sb.append($IS.text); }
     | NULL      { sb.append($NULL.text); }
+    | TRUE      { sb.append($TRUE.text); }
+    | FALSE     { sb.append($FALSE.text); }
     | STREAM    { sb.append($STREAM.text); }
     | THROUGH   { sb.append($THROUGH.text); }
     | STORE     { sb.append($STORE.text); }
@@ -587,6 +602,9 @@ eid : rel_str_op
     | RIGHT     { sb.append($RIGHT.text); }
     | FULL      { sb.append($FULL.text); }
     | IDENTIFIER    { sb.append($IDENTIFIER.text); }
+    | TOBAG    { sb.append("TOBAG"); }
+    | TOMAP    { sb.append("TOMAP"); }
+    | TOTUPLE    { sb.append("TOTUPLE"); }
 ;
 
 // relational operator

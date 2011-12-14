@@ -166,7 +166,7 @@ public class TestHBaseStorage {
             Assert.assertEquals(count + 0.0, Double.parseDouble(col_b), 1e-6);
             Assert.assertEquals("Text_" + count, col_c);
 
-            Assert.assertEquals(4, pig_cf_map.size());
+            Assert.assertEquals(5, pig_cf_map.size());
             Assert.assertEquals(count,
                     Integer.parseInt(pig_cf_map.get("col_a").toString()));
             Assert.assertEquals(count + 0.0,
@@ -263,6 +263,87 @@ public class TestHBaseStorage {
         LOG.info("LoadFromHBase done");
     }
 
+    /**
+     *     * Test Load from hbase with map parameters and column prefix with a
+     *     static column
+     *
+     */
+    @Test
+    public void testLoadWithFixedAndPrefixedCols() throws IOException {
+        prepareTable(TESTTABLE_1, true, DataFormat.UTF8PlainText);
+
+        //NOTE: I think there is some strangeness in how HBase handles column
+        // filters. I was only able to reproduce a bug related to missing column
+        // values in the response when I used 'sc' as a column name, instead of
+        // 'col_a' as I use below.
+        pig.registerQuery("a = load 'hbase://"
+                + TESTTABLE_1
+                + "' using "
+                + "org.apache.pig.backend.hadoop.hbase.HBaseStorage('"
+                + "pig:sc pig:prefixed_col_*"
+                + "','-loadKey') as (rowKey:chararray, sc:chararray, pig_cf_map:map[]);");
+        Iterator<Tuple> it = pig.openIterator("a");
+        int count = 0;
+        LOG.info("LoadFromHBase Starting");
+        while (it.hasNext()) {
+            Tuple t = it.next();
+            LOG.info("LoadFromHBase " + t);
+            String rowKey = (String) t.get(0);
+            String col_a = t.get(1) != null ? t.get(1).toString() : null;
+            Map pig_cf_map = (Map) t.get(2);
+            Assert.assertEquals(3, t.size());
+
+            Assert.assertEquals("00".substring((count + "").length()) + count,
+                    rowKey);
+            Assert.assertEquals("PrefixedText_" + count,
+                    ((DataByteArray) pig_cf_map.get("prefixed_col_d")).toString());
+            Assert.assertEquals(1, pig_cf_map.size());
+            Assert.assertEquals(Integer.toString(count), col_a);
+
+            count++;
+        }
+        Assert.assertEquals(TEST_ROW_COUNT, count);
+        LOG.info("LoadFromHBase done");
+    }
+  
+    /**
+     *     * Test Load from hbase with map parameters and with a
+     *     static column
+     *
+     */
+    @Test
+    public void testLoadWithFixedAndPrefixedCols2() throws IOException {
+        prepareTable(TESTTABLE_1, true, DataFormat.UTF8PlainText);
+
+        pig.registerQuery("a = load 'hbase://"
+                + TESTTABLE_1
+                + "' using "
+                + "org.apache.pig.backend.hadoop.hbase.HBaseStorage('"
+                + "pig:col_a pig:prefixed_col_*"
+                + "','-loadKey') as (rowKey:chararray, col_a:chararray, pig_cf_map:map[]);");
+        Iterator<Tuple> it = pig.openIterator("a");
+        int count = 0;
+        LOG.info("LoadFromHBase Starting");
+        while (it.hasNext()) {
+            Tuple t = it.next();
+            LOG.info("LoadFromHBase " + t);
+            String rowKey = (String) t.get(0);
+            String col_a = t.get(1) != null ? t.get(1).toString() : null;
+            Map pig_cf_map = (Map) t.get(2);
+            Assert.assertEquals(3, t.size());
+
+            Assert.assertEquals("00".substring((count + "").length()) + count,
+                    rowKey);
+            Assert.assertEquals("PrefixedText_" + count,
+                    ((DataByteArray) pig_cf_map.get("prefixed_col_d")).toString());
+            Assert.assertEquals(1, pig_cf_map.size());
+            Assert.assertEquals(Integer.toString(count), col_a);
+
+            count++;
+        }
+        Assert.assertEquals(TEST_ROW_COUNT, count);
+        LOG.info("LoadFromHBase done");
+    }
 
     /**
      * load from hbase test
@@ -762,6 +843,43 @@ public class TestHBaseStorage {
         Assert.assertEquals(100, i);
     }
 
+    /**
+     * Test to if HBaseStorage handles different scans in a single MR job.
+     * This can happen PIG loads two different aliases (as in a join or
+     * union).
+     */
+    @Test
+    public void testHeterogeneousScans() throws IOException {
+        prepareTable(TESTTABLE_1, true, DataFormat.HBaseBinary);
+        prepareTable(TESTTABLE_2, true, DataFormat.UTF8PlainText);
+        scanTable1(pig, DataFormat.HBaseBinary);
+        pig.registerQuery(String.format(
+              " b = load 'hbase://%s' using %s('%s %s') as (col_a:int, col_c);",
+              TESTTABLE_2, "org.apache.pig.backend.hadoop.hbase.HBaseStorage",
+              TESTCOLUMN_A, TESTCOLUMN_C));
+        pig.registerQuery(" c = join a by col_a, b by col_a; ");
+        // this results in a single job with mappers loading
+        // different HBaseStorage specs.
+
+        Iterator<Tuple> it = pig.openIterator("c");
+        int index = 0;
+        while (it.hasNext()) {
+            Tuple t = it.next();
+            String rowKey = (String) t.get(0);
+            int col_a = (Integer) t.get(1);
+            Assert.assertNotNull(t.get(2));
+            double col_b = (Double) t.get(2);
+            String col_c = (String) t.get(3);
+
+            Assert.assertEquals("00".substring((index + "").length()) + index,
+                    rowKey);
+            Assert.assertEquals(index, col_a);
+            Assert.assertEquals(index + 0.0, col_b, 1e-6);
+            Assert.assertEquals("Text_" + index, col_c);
+            index++;
+        }
+        Assert.assertEquals(index, TEST_ROW_COUNT);
+    }
 
     private void scanTable1(PigServer pig, DataFormat dataFormat) throws IOException {
         scanTable1(pig, dataFormat, "");
@@ -810,6 +928,9 @@ public class TestHBaseStorage {
                     // row key: string type
                     Put put = new Put(Bytes.toBytes("00".substring(v.length())
                             + v));
+                    // sc: int type
+                    put.add(COLUMNFAMILY, Bytes.toBytes("sc"),
+                            Bytes.toBytes(i));
                     // col_a: int type
                     put.add(COLUMNFAMILY, Bytes.toBytes("col_a"),
                             Bytes.toBytes(i));
@@ -827,6 +948,9 @@ public class TestHBaseStorage {
                     // row key: string type
                     Put put = new Put(
                             ("00".substring(v.length()) + v).getBytes());
+                    // sc: int type
+                    put.add(COLUMNFAMILY, Bytes.toBytes("sc"),
+                            (i + "").getBytes()); // int
                     // col_a: int type
                     put.add(COLUMNFAMILY, Bytes.toBytes("col_a"),
                             (i + "").getBytes()); // int

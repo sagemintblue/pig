@@ -55,6 +55,7 @@ import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.POPack
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POJoinPackage;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POStore;
+import org.apache.pig.backend.hadoop.executionengine.shims.HadoopShims;
 import org.apache.pig.impl.PigContext;
 import org.apache.pig.impl.io.FileSpec;
 import org.apache.pig.impl.plan.CompilationMessageCollector;
@@ -73,6 +74,15 @@ import org.apache.pig.tools.pigstats.ScriptState;
  *
  */
 public class MapReduceLauncher extends Launcher{
+
+    public static final String SUCCEEDED_FILE_NAME = "_SUCCESS";
+    
+    public static final String SUCCESSFUL_JOB_OUTPUT_DIR_MARKER =
+        "mapreduce.fileoutputcommitter.marksuccessfuljobs";
+
+    public static final String PROP_EXEC_MAP_PARTAGG = "pig.exec.mapPartAgg";
+
+    
     private static final Log log = LogFactory.getLog(MapReduceLauncher.class);
  
     //used to track the exception thrown by the job control which is run in a separate thread
@@ -81,11 +91,33 @@ public class MapReduceLauncher extends Launcher{
     private boolean aggregateWarning = false;
 
     private Map<FileSpec, Exception> failureMap;
-
-    public static final String SUCCEEDED_FILE_NAME = "_SUCCESS";
     
-    public static final String SUCCESSFUL_JOB_OUTPUT_DIR_MARKER =
-        "mapreduce.fileoutputcommitter.marksuccessfuljobs";
+    private JobControl jc=null;
+    
+    private class HangingJobKiller extends Thread {
+        public HangingJobKiller() {
+        }
+        @Override
+        public void run() {
+            try {
+                log.debug("Receive kill signal");
+                if (jc!=null) {
+                    for (Job job : jc.getRunningJobs()) {
+                        RunningJob runningJob = job.getJobClient().getJob(job.getAssignedJobID());
+                        if (runningJob!=null)
+                            runningJob.killJob();
+                        log.info("Job " + job.getJobID() + " killed");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Encounter exception on cleanup:" + e);
+            }
+        }
+    }
+
+    public MapReduceLauncher() {
+        Runtime.getRuntime().addShutdownHook(new HangingJobKiller());
+    }
     
     /**
      * Get the exception that caused a failure on the backend for a
@@ -130,7 +162,6 @@ public class MapReduceLauncher extends Launcher{
         List<NativeMapReduceOper> failedNativeMR = new LinkedList<NativeMapReduceOper>();
         List<Job> completeFailedJobsInThisRun = new LinkedList<Job>();
         List<Job> succJobs = new LinkedList<Job>();
-        JobControl jc;
         int totalMRJobs = mrp.size();
         int numMRJobsCompl = 0;
         double lastProg = -1;
@@ -488,7 +519,9 @@ public class MapReduceLauncher extends Launcher{
         //String prop = System.getProperty("pig.exec.nocombiner");
         String prop = pc.getProperties().getProperty("pig.exec.nocombiner");
         if (!pc.inIllustrator && !("true".equals(prop)))  {
-            CombinerOptimizer co = new CombinerOptimizer(plan, lastInputChunkSize);
+            boolean doMapAgg = 
+                    Boolean.valueOf(pc.getProperties().getProperty(PROP_EXEC_MAP_PARTAGG,"false"));
+            CombinerOptimizer co = new CombinerOptimizer(plan, doMapAgg);
             co.visit();
             //display the warning message(s) from the CombinerOptimizer
             co.getMessageCollector().logMessages(MessageType.Warning, aggregateWarning, log);
@@ -498,6 +531,10 @@ public class MapReduceLauncher extends Launcher{
         // by a sample job.
         SampleOptimizer so = new SampleOptimizer(plan, pc);
         so.visit();
+        
+        LimitAdjuster la = new LimitAdjuster(plan, pc);
+        la.visit();
+        la.adjust();
         
         // Optimize to use secondary sort key if possible
         prop = pc.getProperties().getProperty("pig.exec.nosecondarykey");
@@ -563,7 +600,7 @@ public class MapReduceLauncher extends Launcher{
      * @throws IOException 
      */
     private void storeSchema(Job job, POStore st) throws IOException {
-        JobContext jc = new JobContext(job.getJobConf(), 
+        JobContext jc = HadoopShims.createJobContext(job.getJobConf(), 
                 new org.apache.hadoop.mapreduce.JobID());
         JobContext updatedJc = PigOutputCommitter.setUpContext(jc, st);
         PigOutputCommitter.storeCleanup(st, updatedJc.getConfiguration());

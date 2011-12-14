@@ -186,11 +186,11 @@ filename : QUOTEDSTRING
 as_clause: ^( AS field_def_list )
 ;
 
-field_def[Set<String> fieldNames] throws Exception
+field_def[Set<String> fieldNames] throws DuplicatedSchemaAliasException
  : ^( FIELD_DEF IDENTIFIER { validateSchemaAliasName( fieldNames, $IDENTIFIER, $IDENTIFIER.text ); } type? )
 ;
 
-field_def_list
+field_def_list throws DuplicatedSchemaAliasException
 scope{
     Set<String> fieldNames;
 }
@@ -203,7 +203,7 @@ scope{
 type : simple_type | tuple_type | bag_type | map_type
 ;
 
-simple_type : INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY
+simple_type : BOOLEAN | INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY
 ;
 
 tuple_type : ^( TUPLE_TYPE field_def_list? )
@@ -222,7 +222,10 @@ func_clause : ^( FUNC_REF func_name )
 func_name : eid ( ( PERIOD | DOLLAR ) eid )*
 ;
 
-func_args : QUOTEDSTRING+
+func_args_string : QUOTEDSTRING | MULTILINE_QUOTEDSTRING
+;
+
+func_args : func_args_string+
 ;
 
 group_clause
@@ -255,7 +258,7 @@ rel : alias {  validateAliasRef( aliases, $alias.node, $alias.name ); }
     | op_clause parallel_clause?
 ;
 
-flatten_generated_item : ( flatten_clause | col_range | expr | STAR) field_def_list?
+flatten_generated_item : ( flatten_clause | col_range | expr | STAR ) field_def_list?
 ;
 
 flatten_clause : ^( FLATTEN expr )
@@ -437,6 +440,7 @@ nested_op : nested_proj
           | nested_distinct
           | nested_limit
           | nested_cross
+          | nested_foreach
 ;
 
 nested_proj : ^( NESTED_PROJ col_ref col_ref+ )
@@ -458,6 +462,9 @@ nested_limit : ^( LIMIT nested_op_input ( INTEGER | expr ) )
 nested_cross : ^( CROSS nested_op_input_list )
 ;
 
+nested_foreach : ^( FOREACH nested_op_input generate_clause )
+;
+
 nested_op_input : col_ref | nested_proj
 ;
 
@@ -470,11 +477,17 @@ stream_clause : ^( STREAM rel ( EXECCOMMAND | IDENTIFIER ) as_clause? )
 mr_clause : ^( MAPREDUCE QUOTEDSTRING path_list? store_clause load_clause EXECCOMMAND? )
 ;
 
-split_clause : ^( SPLIT rel split_branch+ )
+split_clause : ^( SPLIT rel split_branch+ split_otherwise? )
 ;
 
 split_branch
  : ^( SPLIT_BRANCH alias cond )
+   {
+       aliases.add( $alias.name );
+   }
+;
+
+split_otherwise 	: ^( OTHERWISE alias )
    {
        aliases.add( $alias.name );
    }
@@ -495,7 +508,7 @@ const_expr : literal
 literal : scalar | map | bag | tuple
 ;
 
-scalar : num_scalar | QUOTEDSTRING | NULL
+scalar : num_scalar | QUOTEDSTRING | NULL | TRUE | FALSE
 ;
 
 num_scalar : MINUS? ( INTEGER | LONGINTEGER | FLOATNUMBER | DOUBLENUMBER )
@@ -551,6 +564,7 @@ eid : rel_str_op
     | EVAL
     | ASC
     | DESC
+    | BOOLEAN
     | INT
     | LONG
     | FLOAT
@@ -562,6 +576,8 @@ eid : rel_str_op
     | MAP
     | IS
     | NULL
+    | TRUE
+    | FALSE
     | STREAM
     | THROUGH
     | STORE
@@ -579,6 +595,9 @@ eid : rel_str_op
     | RIGHT
     | FULL
     | IDENTIFIER
+    | TOBAG
+    | TOMAP
+    | TOTUPLE
 ;
 
 // relational operator
