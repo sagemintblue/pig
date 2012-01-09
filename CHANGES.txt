@@ -24,6 +24,22 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2267: Make the name of the columns in schema optional (jcoveney via daijy)
+
+PIG-2453: Fetching schema can be very slow for multi-thousand file LOADs (dvryaboy)
+
+PIG-2443: [Piggybank] Add UDFs to check if a String is an Integer And if a String is Numeric (prkommireddi via daijy)
+
+PIG-2437: Use Ivy to get automaton.jar (azaroth)
+
+PIG-2448: Convert more tests to use LOCAL mode (dvryaboy)
+
+PIG-2438: Do not hardcode commons-lang version in build.xml (azaroth)
+
+PIG-2422: Add log messages for Jython schema definitions (vivekp via gates)
+
+PIG-2403: Reduce code duplication in SUM, MAX, MIN udfs (dvryaboy)
+
 PIG-2245: Add end to end test for tokenize (markroddy via gates)
 
 PIG-2327: bin/pig doesn't have any hooks for picking up ZK installation deployed from tarballs (rvs via hashutosh)
@@ -49,6 +65,12 @@ PIG-2337: Provide UDF with input schema (xutingz via daijy)
 OPTIMIZATIONS
 
 BUG FIXES
+
+PIG-2432: Eclipse .classpath file is out of date (gates)
+
+PIG-2427: getSchemaFromString throws away the name of the tuple that is in a bag (jcoveney via dvryaboy)
+
+PIG-2425: Aggregate Warning does not work as expected on Embedding Pig in Java 0.9.1 (prkommireddi via thejas)
 
 PIG-2384: Generic Invokers should use PigContext to resolve classes (dvryaboy)
 
@@ -190,6 +212,19 @@ PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
 
+PIG-2444: Remove the Zebra *.xml documentation files from the TRUNK and Branch-10 (chandec via daijy)
+
+PIG-2430: An EvalFunc which overrides getArgToFuncMapping with FuncSpec
+ with constructor arguments is not properly instantiated with said arguments (jcoveney via thejas)
+
+PIG-2457: JsonLoaderStorage tests is broken for e2e (daijy)
+
+PIG-2426: ProgressableReporter.progress(String msg) is an empty function (vivekp via daijy)
+
+PIG-2363: _logs for streaming commands bug in new parser (vivekp via daijy)
+
+PIG-2331: BinStorage in LOAD statement failing when input has curly braces (xutingz via thejas)
+
 PIG-2391: Bzip_2 test is broken (xutingz via daijy)
 
 PIG-2358: JobStats.getHadoopCounters() is never set and always returns null (xutingz via daijy)
@@ -324,7 +359,23 @@ inclusion of test classes (cos via gates)
 
 Release 0.9.2 - Unreleased
 
+IMPROVEMENTS
+
+PIG-2447: piggybank: get hive dependency from maven (thw via azaroth)
+
+PIG-2347: Fix Pig Unit tests for hadoop 23 (daijy)
+
+PIG-2431: Upgrade bundled hadoop version to 20.205 (daijy)
+
 BUG FIXES
+
+PIG-2458: Can't have spaces in parameter substitution (jcoveney via daijy)
+
+PIG-2410: Piggybank does not compile in 23 (daijy)
+
+PIG-2418: rpm release package does not take PIG_CLASSPATH (daijy)
+
+PIG-2291: PigStats.isSuccessful returns false if embedded pig script has dump (xutingz via daijy)
 
 PIG-2415: A fix for 0.23 local mode: put "yarn-default.xml" into the configuration (daijy)
 

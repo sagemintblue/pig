@@ -191,6 +191,7 @@ field_def
 		}
 	}
 }
+    | ^( FIELD_DEF_WITHOUT_IDENTIFIER type )
 ;
 
 field_def_list
@@ -209,7 +210,7 @@ tuple_type
 ;
 
 bag_type 
-    : ^( BAG_TYPE tuple_type? )  
+    : ^( BAG_TYPE IDENTIFIER? tuple_type? )
 ;
 
 map_type : ^( MAP_TYPE type? )

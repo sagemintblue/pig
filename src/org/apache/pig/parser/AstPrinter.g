@@ -151,6 +151,7 @@ as_clause
 
 field_def
     : ^( FIELD_DEF IDENTIFIER { sb.append($IDENTIFIER.text); }  ( {sb.append(":"); }  type)? )
+    | ^( FIELD_DEF type )
 ;
 
 field_def_list
@@ -176,7 +177,7 @@ tuple_type
 ;
 
 bag_type 
-    : ^( BAG_TYPE { sb.append("bag{"); } ( { sb.append("T:"); } tuple_type )? ) { sb.append("}"); } 
+    : ^( BAG_TYPE { sb.append("bag{"); } ( { sb.append("T:"); } IDENTIFIER? tuple_type )? ) { sb.append("}"); } 
 ;
 
 map_type : ^( MAP_TYPE { sb.append("map["); } type? ) { sb.append("]"); }

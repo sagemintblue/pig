@@ -51,8 +51,6 @@
     <!-- property name="build.encoding" value="ISO-8859-1" / -->
     <property name="build.encoding" value="UTF8" />
 
-    <property name="automaton.jarfile" value="automaton.jar" />
-
     <!-- javac properties -->
     <property name="javac.debug" value="on" />
     <property name="javac.optimize" value="on" />
@@ -81,17 +79,17 @@
     <property name="test.build.dir" value="${build.dir}/test" />
     <property name="test.build.classes" value="${test.build.dir}/classes" />
     <property name="test.log.dir" value="${test.build.dir}/logs" />
-    <property name="test.timeout" value="2700000" />
+    <property name="test.timeout" value="3600000" />
     <property name="test.junit.output.format" value="plain" />
     <property name="test.commit.file" value="${test.src.dir}/commit-tests"/>
     <property name="test.unit.file" value="${test.src.dir}/unit-tests"/>
     <property name="test.smoke.file" value="${test.src.dir}/smoke-tests"/>
     <property name="test.all.file" value="${test.src.dir}/all-tests"/>
     <property name="test.exclude.file" value="${test.src.dir}/excluded-tests"/>
+    <property name="test.exclude.file.23" value="${test.src.dir}/excluded-tests-23"/>
     <property name="pigunit.jarfile" value="pigunit.jar" />
     <property name="smoke.tests.jarfile" value="${build.dir}/${final.name}-smoketests.jar" />
     <property name="test.pigunit.src.dir" value="${test.src.dir}/org/apache/pig/test/pigunit" />
-    <property name="commons-lang.jarfile" value="commons-lang-2.4.jar" />    
     <property name="test.pigunit.file" value="${test.src.dir}/pigunit-tests"/>
 
 
@@ -159,7 +157,7 @@
     <property name="hadoopversion" value="20" />
 
     <condition property="isHadoop23">
-        <equals arg1="hadoopversion" arg2="23"/>
+        <equals arg1="${hadoopversion}" arg2="23"/>
     </condition>
 
     <property name="src.shims.dir" value="${basedir}/shims/src/hadoop${hadoopversion}" />
@@ -220,23 +218,21 @@
     <!-- ====================================================== -->
     <!-- setup the classpath -->
     <path id="classpath">
-	<path refid="compile.classpath"/>	
         <fileset dir="${lib.dir}" includes="*.jar"/>
         <fileset file="${ivy.lib.dir}/${zookeeper.jarfile}"/>
+        <fileset dir="${ivy.lib.dir}" includes="*.jar"/>
     </path>
 
     <!-- javadoc-classpath -->
     <path id="javadoc-classpath">
-	<fileset file="${lib.dir}/${automaton.jarfile}" />
-	<path refid="javadoc.classpath"/>	
+	    <path refid="javadoc.classpath"/>	
     </path> 
 
     <path id="test.classpath">
         <pathelement location="${build.classes}"/>
         <pathelement location="${test.src.dir}"/>
-        <fileset dir="${ivy.lib.dir}" includes="hadoop*.jar"/>
+        <pathelement location="contrib/piggybank/java/piggybank.jar"/>
         <path refid="classpath"/>
-        <path refid="test-classpath"/>
     </path>
 
     <target name="init" depends="ivy-compile" >
@@ -415,6 +411,10 @@
         </antcall>
     	
     	<copy file="${basedir}/test/hbase-site.xml" tofile="${test.build.classes}/hbase-site.xml"/>
+   
+        <ivy:cachepath pathid="mr-apps-test.classpath" />
+        <property name="mr-apps-classpath" refid="mr-apps-test.classpath" />
+        <echo file="${test.build.classes}/mrapp-generated-classpath" message="${mr-apps-classpath}" />
     </target>
 
     <!-- This target is for default compilation -->
@@ -530,7 +530,7 @@
         </copy>
         <move file="${output.jarfile}" tofile="${output.stage.jarfile}"/>
         <sleep seconds="1"/>
-        <jar jarfile="${output.jarfile}" if="isHadoop23">
+        <jar jarfile="${output.jarfile}">
             <manifest>
                 <attribute name="Main-Class" value="org.apache.pig.Main" />
                 <section name="org/apache/pig">
@@ -595,7 +595,6 @@
                     <attribute name="Svn-Revision" value="${svnString}" />
                 </section>
             </manifest>
-            <zipfileset src="${lib.dir}/${automaton.jarfile}" />
             <zipgroupfileset dir="${ivy.lib.dir}">
                 <include name="hadoop-core-${hadoop-core.version}.jar" />
                 <include name="hadoop-*-${hadoop-common.version}*.jar" />
@@ -608,12 +607,13 @@
                 <include name="jackson-core-asl-${jackson.version}.jar" />
                 <include name="joda-time-${joda-time.version}.jar" />
                 <include name="guava-${guava.version}.jar" />
-                <include name="avro-${avro.version}.jar"/>
+                <include name="automaton-${automaton.version}.jar" />
+                <include name="avro-${avro.version}.jar" />
                 <include name="hbase-${hbase.version}.jar" />
-                <include name="commons*.jar"/>
-                <include name="log4j*.jar"/>
-                <include name="jsp-api*.jar"/>
-                <include name="zookeeper*.jar"/>
+                <include name="commons*.jar" />
+                <include name="log4j*.jar" />
+                <include name="jsp-api*.jar" />
+                <include name="zookeeper*.jar" />
             </zipgroupfileset>
             <fileset file="${basedir}/conf/pig-default.properties" />
         </jar>
@@ -674,7 +674,7 @@
             </manifest>
             <fileset file="${basedir}/conf/pig-default.properties" />
         </jar>
-        <!-- @depricated -->
+        <!-- @deprecated -->
         <jar jarfile="${output.jarfile.withouthadoop}" basedir="${build.classes}">
             <manifest>
                 <attribute name="Main-Class" value="org.apache.pig.Main" />
@@ -686,7 +686,6 @@
                     <attribute name="Svn-Revision" value="${svnString}" />
                 </section>
             </manifest>
-            <zipfileset src="${lib.dir}/${automaton.jarfile}" />
             <zipgroupfileset dir="${ivy.lib.dir}">
                 <include name="antlr-runtime-${antlr.version}.jar" />
                 <include name="ST4-${stringtemplate.version}.jar" />
@@ -694,6 +693,7 @@
                 <include name="jackson-mapper-asl-${jackson.version}.jar" />
                 <include name="jackson-core-asl-${jackson.version}.jar" />
                 <include name="guava-${guava.version}.jar" />
+                <include name="automaton-${automaton.version}.jar" />
             </zipgroupfileset>
             <fileset file="${basedir}/conf/pig-default.properties" />
         </jar>
@@ -750,6 +750,7 @@
                     <patternset>
                        <includesfile name="@{test.file}"/>
                        <excludesfile name="${test.exclude.file}" if="test.exclude.file"/>
+                       <excludesfile name="${test.exclude.file.23}" if="isHadoop23" />
                     </patternset>
                     <exclude name="**/${exclude.testcase}.java" if="exclude.testcase" />
                 </fileset>
@@ -811,15 +812,15 @@
     <!-- Pigunit                                                            -->
     <!-- ================================================================== -->
 
-    <target depends="compile-test" name="pigunit-jar" description="create the pigunit jar file">
+    <target name="pigunit-jar" depends="compile-test, ivy-test" description="create the pigunit jar file">
         <echo> *** Creating pigunit.jar ***</echo>
-      <jar destfile="${pigunit.jarfile}">
-          <fileset dir="${test.build.classes}">
-              <include name="**/org/apache/pig/pigunit/**"/>
-              <include name="**/org/apache/pig/test/Util.**"/>
-          </fileset>
-      	  <zipfileset src="${ivy.lib.dir}/${commons-lang.jarfile}" />
-      </jar>
+        <jar destfile="${pigunit.jarfile}">
+            <fileset dir="${test.build.classes}">
+                <include name="**/org/apache/pig/pigunit/**"/>
+                <include name="**/org/apache/pig/test/Util.**"/>
+            </fileset>
+      	    <zipfileset src="${ivy.lib.dir}/commons-lang-${commons-lang.version}.jar" />
+        </jar>
     </target>
 
     <target name="test-pigunit" depends="compile-test,jar-withouthadoop, pigunit-jar" description="Run tests that test PigUnit">
@@ -1480,7 +1481,6 @@
        <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="test"/>
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="test"/>
-       <ivy:cachepath pathid="test-classpath" conf="test" type="jar,test-jar"/>
      </target>
 
      <target name="ivy-javadoc" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for javadoc configuration">
