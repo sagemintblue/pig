@@ -66,6 +66,7 @@ import org.apache.pig.impl.util.LogUtils;
 import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.PropertiesUtil;
 import org.apache.pig.impl.util.UDFContext;
+import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.DryRunGruntParser;
 import org.apache.pig.scripting.ScriptEngine;
 import org.apache.pig.scripting.ScriptEngine.SupportedScriptLang;
@@ -103,6 +104,10 @@ public class Main {
 
     private static final String PROP_FILT_SIMPL_OPT
         = "pig.exec.filterLogicExpressionSimplifier";
+
+    protected static final String PROGRESS_NOTIFICATION_LISTENER_KEY = "pig.notification.listener";
+
+    protected static final String PROGRESS_NOTIFICATION_LISTENER_ARG_KEY = "pig.notification.listener.arg";
 
     static {
        Attributes attr=null;
@@ -163,6 +168,9 @@ static int run(String args[], PigProgressNotificationListener listener) {
         PropertiesUtil.loadDefaultProperties(properties);
         properties.putAll(ConfigurationUtil.toProperties(conf));
 
+        if (listener == null) {
+            listener = makeListener(properties);
+        }
         String[] pigArgs = parser.getRemainingArgs();
 
         boolean userSpecifiedLog = false;
@@ -360,7 +368,6 @@ static int run(String args[], PigProgressNotificationListener listener) {
             scriptState.registerListener(listener);
         }
 
-
         if(logFileName == null && !userSpecifiedLog) {
             logFileName = validateLogFile(properties.getProperty("pig.logfile"), null);
         }
@@ -416,8 +423,8 @@ static int run(String args[], PigProgressNotificationListener listener) {
                                 .getPath(), type.name().toLowerCase());
                 }
             }
-
-            in = new BufferedReader(new FileReader(localFileRet.file));
+            //Reader is created by first loading "pig.load.default.statements" or .pigbootup file if available
+            in = new BufferedReader(new InputStreamReader(Utils.getCompositeStream(new FileInputStream(localFileRet.file), properties)));
 
             // run parameter substitution preprocessor first
             substFile = file + ".substituted";
@@ -511,7 +518,8 @@ static int run(String args[], PigProgressNotificationListener listener) {
             }
             // Interactive
             mode = ExecMode.SHELL;
-            ConsoleReader reader = new ConsoleReader(System.in, new OutputStreamWriter(System.out));
+          //Reader is created by first loading "pig.load.default.statements" or .pigbootup file if available
+            ConsoleReader reader = new ConsoleReader(Utils.getCompositeStream(System.in, properties), new OutputStreamWriter(System.out));
             reader.setDefaultPrompt("grunt> ");
             final String HISTORYFILE = ".pig_history";
             String historyFile = System.getProperty("user.home") + File.separator  + HISTORYFILE;
@@ -545,8 +553,9 @@ static int run(String args[], PigProgressNotificationListener listener) {
                                 .getPath(), type.name().toLowerCase());
                 }
             }
-
-            in = new BufferedReader(new FileReader(localFileRet.file));
+            //Reader is created by first loading "pig.load.default.statements" or .pigbootup file if available
+            InputStream seqInputStream = Utils.getCompositeStream(new FileInputStream(localFileRet.file), properties);
+            in = new BufferedReader(new InputStreamReader(seqInputStream));
 
             // run parameter substitution preprocessor first
             substFile = remainders[0] + ".substituted";
@@ -629,6 +638,22 @@ static int run(String args[], PigProgressNotificationListener listener) {
     }
 
     return rc;
+}
+
+protected static PigProgressNotificationListener makeListener(Properties properties) {
+    String className = properties.getProperty(PROGRESS_NOTIFICATION_LISTENER_KEY);
+    if (className != null) {
+        FuncSpec fs = null;
+        if (properties.containsKey(PROGRESS_NOTIFICATION_LISTENER_ARG_KEY)) {
+            fs = new FuncSpec(className,
+                    properties.getProperty(PROGRESS_NOTIFICATION_LISTENER_ARG_KEY));
+        } else {
+            fs = new FuncSpec(className);
+        }
+        return (PigProgressNotificationListener) PigContext.instantiateFuncFromSpec(fs);
+    } else {
+        return null;
+    }
 }
 
 private static int getReturnCodeForStats(int[] stats) {
@@ -983,26 +1008,26 @@ private static SupportedScriptLang determineScriptType(String file)
 }
 
 private static int runEmbeddedScript(PigContext pigContext, String file, String engine)
-        throws IOException {
-    log.info("Run embedded script: " + engine);
-    pigContext.connect();
-    ScriptEngine scriptEngine = ScriptEngine.getInstance(engine);
-    Map<String, List<PigStats>> statsMap = scriptEngine.run(pigContext, file);
-    PigStatsUtil.setStatsMap(statsMap);
+throws IOException {
+	log.info("Run embedded script: " + engine);
+	pigContext.connect();
+	ScriptEngine scriptEngine = ScriptEngine.getInstance(engine);
+	Map<String, List<PigStats>> statsMap = scriptEngine.run(pigContext, file);
+	PigStatsUtil.setStatsMap(statsMap);
 
-    int failCount = 0;
-    int totalCount = 0;
-    for (List<PigStats> lst : statsMap.values()) {
-        if (lst != null && !lst.isEmpty()) {
-            for (PigStats stats : lst) {
-                if (!stats.isSuccessful()) failCount++;
-                totalCount++;
-            }
-        }
-    }
-    return (totalCount > 0 && failCount == totalCount) ? ReturnCode.FAILURE
-            : (failCount > 0) ? ReturnCode.PARTIAL_FAILURE
-                    : ReturnCode.SUCCESS;
+	int failCount = 0;
+	int totalCount = 0;
+	for (List<PigStats> lst : statsMap.values()) {
+		if (lst != null && !lst.isEmpty()) {
+			for (PigStats stats : lst) {
+				if (!stats.isSuccessful()) failCount++;
+				totalCount++;
+			}
+		}
+	}
+	return (totalCount > 0 && failCount == totalCount) ? ReturnCode.FAILURE
+			: (failCount > 0) ? ReturnCode.PARTIAL_FAILURE
+					: ReturnCode.SUCCESS;
 }
 
 }

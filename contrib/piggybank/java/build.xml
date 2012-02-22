@@ -16,6 +16,7 @@
 -->
 
 <project basedir="." default="jar" name="pigudf">
+    <property file="../../../build.properties" />
     <!-- javac properties -->
     <property name="javac.debug" value="on" />
     <property name="javac.level" value="source,lines,vars"/>
@@ -56,9 +57,9 @@
     <property name="test.timeout" value="900000" />
     <property name="test.junit.output.format" value="plain" />
     <property name="test.src.dir" value="src/test/java" />
-    <property name="junit.hadoop.conf" value="${user.home}/pigtest/conf/"/>
 
     <path id="pigudf.classpath">
+        <pathelement location="../../../build/classes"/>
         <pathelement location="${build.classes}"/>
         <pathelement location="${pigjar-withouthadoop}"/>
         <pathelement location="${pigtest}"/>
@@ -72,7 +73,6 @@
         <pathelement location="${build.classes}"/>
         <pathelement location="${test.classes}"/>
         <pathelement location="${test.src.dir}"/>
-        <pathelement location="${junit.hadoop.conf}" />
         <path refid="pigudf.classpath"/>
     </path>
 
@@ -112,8 +112,11 @@
         <echo> *** Running UDF tests ***</echo>
         <delete dir="${test.logs}"/>
         <mkdir dir="${test.logs}"/>
+        <tempfile property="junit.tmp.dir" prefix="piggybank_junit_tmp" destDir="${java.io.tmpdir}" />
+        <mkdir dir="${junit.tmp.dir}/"/>
         <junit printsummary="yes" haltonfailure="no" fork="yes" maxmemory="512m" dir="${basedir}" timeout="${test.timeout}" errorProperty="tests.failed" failureProperty="tests.failed">        
             <sysproperty key="hadoop.log.dir" value="${test.logs}"/>
+            <sysproperty key="java.io.tmpdir" value="${junit.tmp.dir}" />
             <classpath refid="test.classpath"/>
             <formatter type="${test.junit.output.format}" />
             <batchtest fork="yes" todir="${test.logs}" unless="testcase">
@@ -126,6 +129,7 @@
                 <fileset dir="${test.src.dir}" includes="**/${testcase}.java"/>
             </batchtest>
         </junit>
+        <delete dir="${junit.tmp.dir}/"/>    	
         <fail if="tests.failed">Tests failed!</fail>
     </target>
     <target depends="init" name="javadoc"

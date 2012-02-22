@@ -24,6 +24,40 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2538: Add helper wrapper classes for StoreFunc (billgraham via dvryaboy)
+
+PIG-2010: registered jars on distributed cache (traviscrawford and julienledem via dvryaboy)
+
+PIG-2533: Pig MR job exceptions masked on frontend (traviscrawford via dvryaboy)
+
+PIG-2525: Support pluggable PigProcessNotifcationListeners on the command line (dvryaboy)
+
+PIG-2515: [piggybank] Make CustomFormatToISO return null on Exception in parsing dates (rjurney via dvryaboy)
+
+PIG-2503: Make @MonitoredUDF inherited (dvryaboy)
+
+PIG-2488: Move Python unit tests to e2e tests (alangates via daijy)
+
+PIG-2456: Pig should have a pigrc to specify default script cache (prkommireddi via daijy)
+
+PIG-2496: Cache resolved classes in PigContext (dvryaboy)
+
+PIG-2482: Integrate HCat DDL command into Pig (daijy)
+
+PIG-2479: changingPattern should be used with checkmodified in ivysettings.xml (abayer via azaroth)
+
+PIG-2349: Ant build repeats ivy-buildJar several times (azaroth)
+
+PIG-2359: Support more efficient Tuples when schemas are known (dvryaboy)
+
+PIG-2282: Automatically update Eclipse .classpath file when new libs are added to the classpath through Ivy (azaroth via daijy)
+
+PIG-2468: Speed up TestBuiltin (dvryaboy)
+
+PIG-2467: Speed up TestCommit (dvryaboy)
+
+PIG-2460: Use guava 11 instead of r06 (dvryaboy)
+
 PIG-2267: Make the name of the columns in schema optional (jcoveney via daijy)
 
 PIG-2453: Fetching schema can be very slow for multi-thousand file LOADs (dvryaboy)
@@ -66,6 +100,21 @@ OPTIMIZATIONS
 
 BUG FIXES
 
+PIG-2322: varargs functions do not get passed the arguments in Python embedding (julien)
+
+PIG-2491: Pig docs still mention hadoop-site.xml (daijy)
+
+PIG-2504: Incorrect sample provided for REGEX_EXTRACT (prkommireddi via daijy)
+
+PIG-2502: Make "hcat.bin" configurable in e2e test (daijy)
+
+PIG-2501: Changes needed to contrib/piggybank/java/build.xml in order to build piggybank.jar with Hadoop 0.23 
+(ekoontz via daijy)
+
+PIG-2499: Pig TestGrunt.testShellCommand occasionally fails (tomwhite via daijy)
+
+PIG-2326: Pig minicluster tests can not be run from eclipse (julienledem via daijy)
+
 PIG-2432: Eclipse .classpath file is out of date (gates)
 
 PIG-2427: getSchemaFromString throws away the name of the tuple that is in a bag (jcoveney via dvryaboy)
@@ -85,6 +134,8 @@ Release 0.10.0 - Unreleased
 INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
+
+PIG-2518: Add ability to clean ivy cache in build.xml (daijy)
 
 PIG-2300: Pig Docs - release 0.10.0 (and 0.9.1) (chandec via daijy)
 
@@ -145,8 +196,6 @@ PIG-2189: e2e test harness needs to use Pig as a source of truth (gates via daij
 
 PIG-1904: Default split destination (azaroth via thejas)
 
-PIG-2125: Make Pig work with hadoop .NEXT (daijy)
-
 PIG-2143: Make PigStorage optionally store schema; improve docs. (dvryaboy) 
 
 PIG-1973: UDFContext.getUDFContext usage of ThreadLocal pattern 
@@ -165,8 +214,6 @@ PIG-2001: DefaultTuple(List) constructor is inefficient, causes List.size()
  complexity (woody via thejas)
 
 PIG-1916: Nested cross (zjshen via daijy)
-
-PIG-2128: Generating the jar file takes a lot of time and is unnecessary when running Pig local mode (julien)
 
 PIG-2121: e2e test harness should use ant instead of make (gates)
 
@@ -212,6 +259,14 @@ PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
 
+PIG-2530: Reusing alias name in nested foreach causes incorrect results (daijy)
+
+PIG-2489: Input Path Globbing{} not working with PigStorageSchema or PigStorage('\t', '-schema') (daijy)
+
+PIG-2484: Fix several e2e test failures/aborts for 23 (daijy)
+
+PIG-2400: Document has based aggregation support (chandec via daijy)
+
 PIG-2444: Remove the Zebra *.xml documentation files from the TRUNK and Branch-10 (chandec via daijy)
 
 PIG-2430: An EvalFunc which overrides getArgToFuncMapping with FuncSpec
@@ -247,11 +302,6 @@ PIG-2290: TOBAG wraps tuple parameters in another tuple (ryan.hoegg via thejas)
 
 PIG-2288: Pig 0.9 error message not useful as compared to 0.8 in case 
  of group by (vivekp via thejas)
-
-PIG-2316: Incorrect results for FILTER *** BY ( *** OR ***) with
- FilterLogicExpressionSimplifier optimizer turned on (knoguchi via thejas)
-
-PIG-2271: PIG regression in BinStorage/PigStorage in 0.9.1 (thejas)
 
 PIG-2309: Keyword 'NOT' is wrongly treated as a UDF in split statement (vivekp via thejas)
 
@@ -357,17 +407,41 @@ declaration (azaroth via gates)
 PIG-2019: smoketest-jar target has to depend on pigunit-jar to guarantee
 inclusion of test classes (cos via gates)
 
-Release 0.9.2 - Unreleased
+Release 0.9.3 - Unreleased
+
+BUG FIXES
+
+PIG-2493: UNION causes casting issues (vivekp via daijy)
+
+PIG-2497: Order of execution of fs, store and sh commands in Pig is not maintained (daijy)
+
+Release 0.9.2
 
 IMPROVEMENTS
+
+PIG-2125: Make Pig work with hadoop .NEXT (daijy)
+
+PIG-2471: Pig Requirements Hadoop (chandec via daijy)
+
+PIG-2431: Upgrade bundled hadoop version to 1.0.0 (daijy)
 
 PIG-2447: piggybank: get hive dependency from maven (thw via azaroth)
 
 PIG-2347: Fix Pig Unit tests for hadoop 23 (daijy)
 
-PIG-2431: Upgrade bundled hadoop version to 20.205 (daijy)
+PIG-2128: Generating the jar file takes a lot of time and is unnecessary when running Pig local mode (julien)
 
 BUG FIXES
+
+PIG-2477: TestBuiltin testLFText/testSFPig failing against 23 due to invalid test setup -- InvalidInputException (phunt via daijy)
+
+PIG-2462: getWrappedSplit is incorrectly returning the first split instead of the current split. (arov via daijy)
+
+PIG-2472: piggybank unit tests write directly to /tmp (thw via daijy)
+
+PIG-2413: e2e test should support testing against two cluster (daijy)
+
+PIG-2342: Pig tutorial documentation needs to update about building tutorial (daijy)
 
 PIG-2458: Can't have spaces in parameter substitution (jcoveney via daijy)
 
@@ -398,7 +472,12 @@ PIG-2346: TypeCastInsert should not insert Foreach if there is no as statement (
 PIG-2339: HCatLoader loads all the partitions in a partitioned table even though
  a filter clause on the partitions is specified in the Pig script (daijy)
 
-Release 0.9.1 - Unreleased
+PIG-2316: Incorrect results for FILTER *** BY ( *** OR ***) with
+ FilterLogicExpressionSimplifier optimizer turned on (knoguchi via thejas)
+
+PIG-2271: PIG regression in BinStorage/PigStorage in 0.9.1 (thejas)
+
+Release 0.9.1
 
 IMPROVEMENTS
 

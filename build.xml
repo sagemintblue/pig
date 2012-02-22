@@ -35,11 +35,11 @@
     <property name="final.name" value="${name}-${version}" />
 
     <!-- source properties -->
-    <property name="lib.dir" value="${basedir}/lib/" />
-    <property name="src.dir" value="${basedir}/src/" />
-    <property name="src.lib.dir" value="${basedir}/lib-src/" />
-    <property name="src.gen.dir" value="${basedir}/src-gen/" />
-    <property name="docs.dir" value="${basedir}/src/docs/" />
+    <property name="lib.dir" value="${basedir}/lib" />
+    <property name="src.dir" value="${basedir}/src" />
+    <property name="src.lib.dir" value="${basedir}/lib-src" />
+    <property name="src.gen.dir" value="${basedir}/src-gen" />
+    <property name="docs.dir" value="${basedir}/src/docs" />
 
 
     <!-- build properties -->
@@ -97,7 +97,6 @@
     <property name="ssh.gateway" value="" />
     <property name="hod.server" value="" />
     <property name="test.log.dir" value="${basedir}/test/logs"/>
-    <property name="junit.hadoop.conf" value="${user.home}/pigtest/conf/"/>
     <property name="test.output" value="no"/>
 
     <!-- e2e test properties -->
@@ -135,6 +134,7 @@
     <property name="clover.report.dir" location="${build.dir}/test/clover/reports"/>
     <property name="clover.jar" location="${clover.home}/lib/clover.jar"/>
     <available property="clover.present" file="${clover.jar}" />
+
     <!-- check if clover reports should be generated -->
     <condition property="clover.enabled">
    	<and>
@@ -212,6 +212,68 @@
     <property name="package.log.dir" value="/var/log/pig"/>
     <property name="package.buildroot" value="/tmp/pig_package_build_${user.name}"/>
     <property name="package.build.dir" value="/tmp/pig_package_build_${user.name}/BUILD"/>
+ 
+    <!-- Eclipse properties -->
+    <property name="build.dir.eclipse" value="${build.dir}"/>
+    <property name="build.dir.eclipse-main-classes" value="${build.classes}"/>
+    <property name="build.dir.eclipse-test-classes" value="${test.build.classes}"/>
+    <!--property name="build.dir.eclipse-test-generated-classes" value="${build.dir.eclipse}/classes-test-generated"/-->
+ 
+    <condition property="ant-eclipse.jar.exists">
+      <available file="${build.dir}/lib/ant-eclipse-1.0-jvm1.2.jar"/>
+    </condition>
+  
+    <target name="ant-eclipse-download" unless="ant-eclipse.jar.exists"
+            description="Downloads the ant-eclipse binary.">
+      <get src="http://downloads.sourceforge.net/project/ant-eclipse/ant-eclipse/1.0/ant-eclipse-1.0.bin.tar.bz2"
+           dest="${build.dir}/ant-eclipse-1.0.bin.tar.bz2" usetimestamp="false" />
+  
+      <untar src="${build.dir}/ant-eclipse-1.0.bin.tar.bz2"
+             dest="${build.dir}" compression="bzip2">
+        <patternset>
+          <include name="lib/ant-eclipse-1.0-jvm1.2.jar"/>
+        </patternset>
+      </untar>
+      <delete file="${build.dir}/ant-eclipse-1.0.bin.tar.bz2" />
+    </target>
+ 
+    <target name="eclipse-files"
+            depends="init,ant-eclipse-download,ivy-compile,ivy-test"
+            description="Create eclipse project files">
+  	     <pathconvert property="eclipse.project">
+  	       <path path="${basedir}"/>
+  	       <regexpmapper from="^.*/([^/]+)$$" to="\1" handledirsep="yes"/>
+  	     </pathconvert>
+             <path id="eclipse.classpath">
+               <fileset dir="${ivy.lib.dir}">
+                 <include name="**.*jar"/>
+               </fileset>
+               <fileset dir="${lib.dir}">
+                 <include name="**.*jar"/>
+               </fileset>
+             </path>
+      <taskdef name="eclipse"
+               classname="prantl.ant.eclipse.EclipseTask"
+               classpath="${build.dir}/lib/ant-eclipse-1.0-jvm1.2.jar" />
+      <eclipse updatealways="true" mode="java">
+        <project name="${eclipse.project}" />
+        <classpath>
+          <source path="${src.dir}"/>
+          <source path="${src.gen.dir}"/>
+          <source path="${src.lib.dir}/bzip2"/>
+          <source path="${src.lib.dir}/shock"/>
+          <source path="${test.e2e.dir}/udfs/java"/>
+          <source path="${src.shims.dir}"/>
+          <source path="${src.shims.test.dir}"/>
+          <source path="tutorial/src"/>
+          <source path="${test.src.dir}" excluding="e2e/pig/udfs/java/"/>
+          <output path="${build.dir.eclipse-main-classes}" />
+          <library pathref="eclipse.classpath" exported="true" />
+          <!--library pathref="classpath" exported="false"/-->
+        </classpath>
+      </eclipse>
+    </target>
+ 
 
     <!-- ====================================================== -->
     <!-- Stuff needed by all targets                            -->
@@ -285,7 +347,10 @@
         <ant dir="${test.e2e.dir}" target="clean"/>
     </target>
     
-    <target name="eclipse-files" depends="compile, ivy-buildJar"
+    <target name="very-clean" unless="offline" depends="ivy-clean-cache,clean"
+            description="Clean build artifacts and flush Ivy cache" />
+
+    <!--target name="eclipse-files" depends="compile, ivy-buildJar"
 			description="Generate files for Eclipse">
         <pathconvert property="eclipse.project">
             <path path="${basedir}"/>
@@ -299,7 +364,7 @@
                 <filter token="PROJECT" value="${eclipse.project}"/>
             </filterset>
         </copy>
-    </target>
+    </target-->
 
     <!-- ================================================================== -->
     <!-- Java Compiler Compiler, generate Parsers                           -->
@@ -412,7 +477,7 @@
     	
     	<copy file="${basedir}/test/hbase-site.xml" tofile="${test.build.classes}/hbase-site.xml"/>
    
-        <ivy:cachepath pathid="mr-apps-test.classpath" />
+        <ivy:cachepath pathid="mr-apps-test.classpath" conf="test" />
         <property name="mr-apps-classpath" refid="mr-apps-test.classpath" />
         <echo file="${test.build.classes}/mrapp-generated-classpath" message="${mr-apps-classpath}" />
     </target>
@@ -726,7 +791,6 @@
         <mkdir dir="${test.log.dir}"/>
         <tempfile property="junit.tmp.dir" prefix="pig_junit_tmp" destDir="${java.io.tmpdir}" />
         <mkdir dir="${junit.tmp.dir}/"/>
-        <mkdir dir="${junit.hadoop.conf}"/>
         <junit showoutput="${test.output}" printsummary="yes" haltonfailure="no" fork="yes" maxmemory="1024m" dir="${basedir}" timeout="${test.timeout}" errorProperty="tests.failed" failureProperty="tests.failed">
             <sysproperty key="ssh.gateway" value="${ssh.gateway}" />
             <sysproperty key="hod.server" value="${hod.server}" />
@@ -737,7 +801,6 @@
             <classpath>
                 <pathelement location="${output.jarfile.withouthadoop}" />
                 <pathelement location="${test.build.classes}" />
-                <pathelement location="${junit.hadoop.conf}" />
                 <pathelement location="." />
 		<pathelement path="${clover.jar}"/>
                 <path refid="test.classpath"/>
@@ -1470,57 +1533,56 @@
        <ivy:configure settingsid="${ant.project.name}.ivy.settings" file="${ivysettings.xml}" override='false'/>
      </target>
 
-     <target name="ivy-compile" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for compile configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="compile"/>
+     <target name="ivy-resolve" depends="ivy-init" unless="ivy.resolved" description="Resolve Ivy dependencies">
+              <property name="ivy.resolved" value="true"/>
+              <ivy:resolve settingsRef="${ant.project.name}.ivy.settings"/>
+     </target>
+
+     <target name="ivy-compile" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for compile configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="compile"/>
        <ivy:cachepath pathid="compile.classpath" conf="compile"/> 		
      </target>
 
-     <target name="ivy-test" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for test configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="test"/>
+     <target name="ivy-test" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for test configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="test"/>
      </target>
 
-     <target name="ivy-javadoc" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for javadoc configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="javadoc"/>
+     <target name="ivy-javadoc" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for javadoc configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="javadoc"/>
        <ivy:cachepath pathid="javadoc.classpath" conf="javadoc"/> 		
      </target>
 
-     <target name="ivy-releaseaudit" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for releaseaudit configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="releaseaudit"/>
+     <target name="ivy-releaseaudit" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for releaseaudit configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="releaseaudit"/>
        <ivy:cachepath pathid="releaseaudit.classpath" conf="releaseaudit"/> 		
      </target>
 
-     <target name="ivy-checkstyle" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for checkstyle configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="checkstyle"/>
+     <target name="ivy-checkstyle" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for checkstyle configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="checkstyle"/>
        <ivy:cachepath pathid="checkstyle.classpath" conf="checkstyle"/> 		
      </target>
      
-     <target name="ivy-buildJar" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for buildJar configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="buildJar"/>
+     <target name="ivy-buildJar" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for buildJar configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="buildJar"/>
        <ivy:cachepath pathid="buildJar.classpath" conf="buildJar"/> 		
      </target>
      
-     <target name="ivy-jdiff" depends="ivy-init" description="Resolve, Retrieve Ivy-managed artifacts for jdiff configuration">
-       <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="jdiff"/>
+     <target name="ivy-jdiff" depends="ivy-resolve" description="Retrieve Ivy-managed artifacts for jdiff configuration">
        <ivy:retrieve settingsRef="${ant.project.name}.ivy.settings"
                  pattern="${build.ivy.lib.dir}/${ivy.artifact.retrieve.pattern}" conf="jdiff"/>
        <ivy:cachepath pathid="jdiff.classpath" conf="jdiff"/> 		
      </target>
 
-     <target name="ivy-resolve" depends="ivy-init">
-         <ivy:resolve settingsRef="${ant.project.name}.ivy.settings" conf="runtime"/>
-     </target>	
+     <target name="ivy-clean-cache" depends="ivy-init-antlib"
+             description="Clean the Ivy cache">
+         <ivy:cleancache />
+     </target>
 
      <target name="assert-pig-jar-exists" depends="ivy-init">
          <fail>
