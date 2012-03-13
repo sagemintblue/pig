@@ -642,19 +642,11 @@ static int run(String args[], PigProgressNotificationListener listener) {
 }
 
 protected static PigProgressNotificationListener makeListener(Properties properties) {
-    String className = properties.getProperty(PROGRESS_NOTIFICATION_LISTENER_KEY);
-    if (className != null) {
-        FuncSpec fs = null;
-        if (properties.containsKey(PROGRESS_NOTIFICATION_LISTENER_ARG_KEY)) {
-            fs = new FuncSpec(className,
-                    properties.getProperty(PROGRESS_NOTIFICATION_LISTENER_ARG_KEY));
-        } else {
-            fs = new FuncSpec(className);
-        }
-        return (PigProgressNotificationListener) PigContext.instantiateFuncFromSpec(fs);
-    } else {
-        return null;
-    }
+    Object listener = PigContext.instantiateObjectFromParams(
+        ConfigurationUtil.toConfiguration(properties),
+        PROGRESS_NOTIFICATION_LISTENER_KEY, PROGRESS_NOTIFICATION_LISTENER_ARG_KEY);
+
+    return listener != null ? (PigProgressNotificationListener) listener : null;
 }
 
 private static int getReturnCodeForStats(int[] stats) {
