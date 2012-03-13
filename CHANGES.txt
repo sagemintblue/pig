@@ -24,6 +24,8 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2541: Automatic record provenance (source tagging) for PigStorage (prkommireddi via daijy)
+
 PIG-2538: Add helper wrapper classes for StoreFunc (billgraham via dvryaboy)
 
 PIG-2010: registered jars on distributed cache (traviscrawford and julienledem via dvryaboy)
@@ -100,6 +102,8 @@ OPTIMIZATIONS
 
 BUG FIXES
 
+PIG-2514: REGEX_EXTRACT not returning correct group with non greedy regex (romainr via daijy)
+
 PIG-2532: Registered classes fail deserialization in frontend (traviscrawford via julien)
 
 PIG-2549: org.apache.pig.piggybank.storage.avro - Broken documentation link for AvroStorage (chrisas via daijy)
@@ -138,6 +142,8 @@ Release 0.10.0 - Unreleased
 INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
+
+PIG-2548: Support for providing parameters to python script (daijy)
 
 PIG-2518: Add ability to clean ivy cache in build.xml (daijy)
 
@@ -262,6 +268,10 @@ PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
+
+PIG-2509: Util.getSchemaFromString fails with java.lang.NullPointerException when a tuple in a bag has no name (as when used in MongoStorage UDF) (jcoveney via daijy)
+
+PIG-2559: Embedded pig in python; invoking sys.exit(0) causes script failure (vivekp via daijy)
 
 PIG-2530: Reusing alias name in nested foreach causes incorrect results (daijy)
 
@@ -414,6 +424,16 @@ inclusion of test classes (cos via gates)
 Release 0.9.3 - Unreleased
 
 BUG FIXES
+
+PIG-2572: e2e harness deploy fails when using pig that does not bundle hadoop (thw via daijy)
+
+PIG-2568: PigOutputCommitter hide exception in commitJob (daijy)
+
+PIG-2564: Build fails - Hadoop 0.23.1-SNAPSHOT no longer available (thw via daijy)
+
+PIG-2535: Bug in new logical plan results in no output for join (daijy)
+
+PIG-2534: Pig generating infinite map outputs (daijy)
 
 PIG-2493: UNION causes casting issues (vivekp via daijy)
 
