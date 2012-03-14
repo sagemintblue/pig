@@ -753,6 +753,7 @@ public class JobControlCompiler{
           (PigReducerEstimator)PigContext.instantiateObjectFromParams(
             conf, REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY);
 
+        log.info("Using reducer estimator: " + estimator.getClass().getName());
         return estimator.estimateNumberOfReducers(conf, lds);
     }
 
