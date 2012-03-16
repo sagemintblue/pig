@@ -38,6 +38,7 @@ import java.util.Vector;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.Level;
 import org.apache.pig.ExecType;
@@ -498,8 +499,37 @@ public class PigContext implements Serializable {
         String msg = "Could not resolve " + name + " using imports: " + packageImportList.get();
         throw new ExecException(msg, errCode, PigException.INPUT);
     }
-    
-    
+
+    /**
+     * A common Pig pattern for initializing objects via system properties is to support passing
+     * something like this on the command line:
+     * <code>-Dpig.notification.listener=MyClass</code>
+     * <code>-Dpig.notification.listener.arg=myConstructorStringArg</code>
+     *
+     * This method will properly initialize the class with the args, if they exist.
+     * @param conf
+     * @param classParamKey the property used to identify the class
+     * @param argParamKey the property used to identify the class args
+     * @return
+     */
+    public static Object instantiateObjectFromParams(Configuration conf,
+                                                     String classParamKey,
+                                                     String argParamKey) {
+      String className = conf.get(classParamKey);
+
+      if (className != null) {
+          FuncSpec fs = null;
+          if (conf.get(argParamKey) != null) {
+              fs = new FuncSpec(className, conf.get(argParamKey));
+          } else {
+              fs = new FuncSpec(className);
+          }
+          return PigContext.instantiateFuncFromSpec(fs);
+      } else {
+          return null;
+      }
+    }
+
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static Object instantiateFuncFromSpec(FuncSpec funcSpec)  {
         Object ret;
