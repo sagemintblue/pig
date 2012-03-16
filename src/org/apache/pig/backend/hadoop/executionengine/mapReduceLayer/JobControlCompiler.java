@@ -92,7 +92,6 @@ import org.apache.pig.impl.util.JarManager;
 import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.UDFContext;
-import org.apache.pig.impl.util.UriUtil;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.tools.pigstats.ScriptState;
 
@@ -131,6 +130,9 @@ public class JobControlCompiler{
     public static final String LOG_DIR = "_logs";
 
     public static final String END_OF_INP_IN_MAP = "pig.invoke.close.in.map";
+
+    private static final String REDUCER_ESTIMATOR_KEY = "pig.exec.reducer.estimator";
+    private static final String REDUCER_ESTIMATOR_ARG_KEY =  "pig.exec.reducer.estimator.arg";
     
     /**
      * We will serialize the POStore(s) present in map and reduce in lists in
@@ -739,88 +741,22 @@ public class JobControlCompiler{
     }
     
     /**
-     * Currently the estimation of reducer number is only applied to HDFS, The estimation is based on the input size of data storage on HDFS.
-     * Two parameters can been configured for the estimation, one is pig.exec.reducers.max which constrain the maximum number of reducer task (default is 999). The other
-     * is pig.exec.reducers.bytes.per.reducer(default value is 1000*1000*1000) which means the how much data can been handled for each reducer.
-     * e.g. the following is your pig script
-     * a = load '/data/a';
-     * b = load '/data/b';
-     * c = join a by $0, b by $0;
-     * store c into '/tmp';
-     * 
-     * The size of /data/a is 1000*1000*1000, and size of /data/b is 2*1000*1000*1000.
-     * Then the estimated reducer number is (1000*1000*1000+2*1000*1000*1000)/(1000*1000*1000)=3
+     * Looks up the estimator from REDUCER_ESTIMATOR_KEY and invokes it to find the number of
+     * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputFileSizeReducerEstimator
      * @param conf
      * @param lds
      * @throws IOException
      */
     static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds) throws IOException {
-           long bytesPerReducer = conf.getLong("pig.exec.reducers.bytes.per.reducer", (1000 * 1000 * 1000));
-        int maxReducers = conf.getInt("pig.exec.reducers.max", 999);
-        long totalInputFileSize = getTotalInputFileSize(conf, lds);
-       
-        log.info("BytesPerReducer=" + bytesPerReducer + " maxReducers="
-            + maxReducers + " totalInputFileSize=" + totalInputFileSize);
-        
-        int reducers = (int)Math.ceil((totalInputFileSize+0.0) / bytesPerReducer);
-        reducers = Math.max(1, reducers);
-        reducers = Math.min(maxReducers, reducers);
-        conf.setInt("mapred.reduce.tasks", reducers);
+        PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
+          new InputFileSizeReducerEstimator() :
+          (PigReducerEstimator)PigContext.instantiateObjectFromParams(
+            conf, REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY);
 
-        log.info("Neither PARALLEL nor default parallelism is set for this job. Setting number of reducers to " + reducers);
-        return reducers;
+        log.info("Using reducer estimator: " + estimator.getClass().getName());
+        return estimator.estimateNumberOfReducers(conf, lds);
     }
 
-    private static long getTotalInputFileSize(Configuration conf, List<POLoad> lds) throws IOException {
-        List<String> inputs = new ArrayList<String>();
-        if(lds!=null && lds.size()>0){
-            for (POLoad ld : lds) {
-                inputs.add(ld.getLFile().getFileName());
-            }
-        }
-        long size = 0;
-        
-        for (String input : inputs){
-            //Using custom uri parsing because 'new Path(location).toUri()' fails
-            // for some valid uri's (eg jdbc style), and 'new Uri(location)' fails
-            // for valid hdfs paths that contain curly braces
-            if(!UriUtil.isHDFSFileOrLocalOrS3N(input)){
-                //skip  if it is not hdfs or local file or s3n
-                continue;
-            }
-
-            //the input file location might be a list of comma separeated files, 
-            // separate them out
-            for(String location : LoadFunc.getPathStrings(input)){
-                if(! UriUtil.isHDFSFileOrLocalOrS3N(location)){
-                    continue;
-                }
-                Path path = new Path(location);
-                FileSystem fs = path.getFileSystem(conf);
-                FileStatus[] status=fs.globStatus(path);
-                if (status != null){
-                    for (FileStatus s : status){
-                        size += getPathLength(fs, s);
-                    }
-                }
-            }
-        }
-        return size;
-   }
-   
-    private static long getPathLength(FileSystem fs,FileStatus status) throws IOException{
-        if (!status.isDir()){
-            return status.getLen();
-        }else{
-            FileStatus[] children = fs.listStatus(status.getPath());
-            long size=0;
-            for (FileStatus child : children){
-                size +=getPathLength(fs, child);
-            }
-            return size;
-        }
-    }
-        
     public static class PigSecondaryKeyGroupComparator extends WritableComparator {
         public PigSecondaryKeyGroupComparator() {
 //            super(TupleFactory.getInstance().tupleClass(), true);
