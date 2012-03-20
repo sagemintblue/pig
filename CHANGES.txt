@@ -24,6 +24,10 @@ INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
 
+PIG-2604: Pig should print its build info at runtime (traviscrawford via dvryaboy)
+
+PIG-2573: Automagically setting parallelism based on input file size does not work with HCatalog (traviscrawford via julien)
+
 PIG-2541: Automatic record provenance (source tagging) for PigStorage (prkommireddi via daijy)
 
 PIG-2538: Add helper wrapper classes for StoreFunc (billgraham via dvryaboy)
@@ -102,6 +106,10 @@ OPTIMIZATIONS
 
 BUG FIXES
 
+PIG-2590: running ant tar and rpm targets on same copy of pig source results in problems (thejas)
+
+PIG-2581: HashFNV inconsistent/non-deterministic due to default platform encoding (prkommireddi via daijy)
+
 PIG-2514: REGEX_EXTRACT not returning correct group with non greedy regex (romainr via daijy)
 
 PIG-2532: Registered classes fail deserialization in frontend (traviscrawford via julien)
@@ -142,6 +150,12 @@ Release 0.10.0 - Unreleased
 INCOMPATIBLE CHANGES
 
 IMPROVEMENTS
+
+PIG-2589: Additional e2e test for 0.10 new features (daijy)
+
+PIG-2182: Add more append support to DataByteArray (gsingers via daijy)
+
+PIG-438: Handle realiasing of existing Alias (A=B;) (daijy)
 
 PIG-2548: Support for providing parameters to python script (daijy)
 
@@ -268,6 +282,20 @@ PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
+
+PIG-2505: AvroStorage won't read any file not ending in .avro (russell.jurney via daijy)
+
+PIG-2585: Enable ignored e2e test cases (daijy)
+
+PIG-2563: IndexOutOfBoundsException: while projecting fields from a bag (daijy)
+
+PIG-2411: AvroStorage UDF in PiggyBank fails to STORE a bag of single-field tuples as Avro arrays (russell.jurney via daijy)
+
+PIG-2565: Support IMPORT for macros stored in S3 Buckets (daijy)
+
+PIG-2570: LimitOptimizer fails with dynamic LIMIT argument (daijy)
+
+PIG-2543: PigStats.isSuccessful returns false if embedded pig script has sh commands (daijy)
 
 PIG-2509: Util.getSchemaFromString fails with java.lang.NullPointerException when a tuple in a bag has no name (as when used in MongoStorage UDF) (jcoveney via daijy)
 
@@ -424,6 +452,10 @@ inclusion of test classes (cos via gates)
 Release 0.9.3 - Unreleased
 
 BUG FIXES
+
+PIG-2576: Change in behavior for UDFContext.getUDFContext().getJobConf() in front-end (thw via daijy)
+
+PIG-2588: e2e harness: use pig command for cluster deploy (thw via daijy)
 
 PIG-2572: e2e harness deploy fails when using pig that does not bundle hadoop (thw via daijy)
 

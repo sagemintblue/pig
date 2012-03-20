@@ -18,6 +18,7 @@
 package org.apache.pig.backend.hadoop.executionengine.mapReduceLayer;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLoad;
 
 import java.io.IOException;
@@ -37,9 +38,10 @@ public interface PigReducerEstimator {
      *
      * @param conf the job configuration
      * @param poLoadList list of POLoads used in the jobs physical plan
+     * @param job job configuration
      * @return the number of reducers to use
      * @throws IOException
      */
-    public int estimateNumberOfReducers(Configuration conf, List<POLoad> poLoadList)
+    public int estimateNumberOfReducers(Configuration conf, List<POLoad> poLoadList, Job job)
         throws IOException;
 }

@@ -23,21 +23,30 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.LoadFunc;
+import org.apache.pig.LoadMetadata;
+import org.apache.pig.ResourceStatistics;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLoad;
 import org.apache.pig.impl.util.UriUtil;
+import org.apache.pig.impl.util.Utils;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class that estimates the number of reducers based on the total size of the
- * input data.  Two parameters can been configured for the estimation, one is
- * pig.exec.reducers.max which constrains the maximum number of reducer tasks
- * (default is 999). The other is pig.exec.reducers.bytes.per.reducer
- * (default value is 1000*1000*1000) which sets how much data to be handled by
- * each reducer. e.g. if the following is your pig script
+ * Class that estimates the number of reducers based on input size.
+ * Number of reducers is based on two properties:
+ * <ul>
+ *     <li>pig.exec.reducers.bytes.per.reducer -
+ *     how many bytes of input per reducer (default is 1000*1000*1000)</li>
+ *     <li>pig.exec.reducers.max -
+ *     constrain the maximum number of reducer task (default is 999)</li>
+ * </ul>
+ * If using a loader that implements LoadMetadata the reported input size is used, otherwise
+ * attempt to determine size from the filesystem.
+ * <p>
+ * e.g. the following is your pig script
  * <pre>
  * a = load '/data/a';
  * b = load '/data/b';
@@ -63,13 +72,14 @@ public class InputFileSizeReducerEstimator implements PigReducerEstimator {
      *
      * @param conf
      * @param lds
+     * @param job job configuration
      * @throws java.io.IOException
      */
     @Override
-    public int estimateNumberOfReducers(Configuration conf, List<POLoad> lds) throws IOException {
+    public int estimateNumberOfReducers(Configuration conf, List<POLoad> lds, Job job) throws IOException {
         long bytesPerReducer = conf.getLong(BYTES_PER_REDUCER_PARAM, DEFAULT_BYTES_PER_REDUCER);
         int maxReducers = conf.getInt(MAX_REDUCER_COUNT_PARAM, DEFAULT_MAX_REDUCER_COUNT_PARAM);
-        long totalInputFileSize = getTotalInputFileSize(conf, lds);
+        long totalInputFileSize = getTotalInputFileSize(conf, lds, job);
 
         log.info("BytesPerReducer=" + bytesPerReducer + " maxReducers="
             + maxReducers + " totalInputFileSize=" + totalInputFileSize);
@@ -83,53 +93,61 @@ public class InputFileSizeReducerEstimator implements PigReducerEstimator {
         return reducers;
     }
 
-    private static long getTotalInputFileSize(Configuration conf, List<POLoad> lds) throws IOException {
-        List<String> inputs = new ArrayList<String>();
-        if(lds!=null && lds.size()>0){
-            for (POLoad ld : lds) {
-                inputs.add(ld.getLFile().getFileName());
-            }
-        }
-        long size = 0;
-
-        for (String input : inputs){
-            //Using custom uri parsing because 'new Path(location).toUri()' fails
-            // for some valid uri's (eg jdbc style), and 'new Uri(location)' fails
-            // for valid hdfs paths that contain curly braces
-            if(!UriUtil.isHDFSFileOrLocalOrS3N(input)){
-                //skip  if it is not hdfs or local file or s3n
+    /**
+     * Get the input size for as many inputs as possible. Inputs that do not report
+     * their size nor can pig look that up itself are excluded from this size.
+     */
+    public static long getTotalInputFileSize(Configuration conf,
+                                             List<POLoad> lds, Job job) throws IOException {
+        long totalInputFileSize = 0;
+        for (POLoad ld : lds) {
+            long size = getInputSizeFromLoader(ld, job);
+            if (size > 0) {
+                totalInputFileSize += size;
                 continue;
             }
-
-            //the input file location might be a list of comma separeated files,
+            // the input file location might be a list of comma separated files,
             // separate them out
-            for(String location : LoadFunc.getPathStrings(input)){
-                if(! UriUtil.isHDFSFileOrLocalOrS3N(location)){
-                    continue;
-                }
-                Path path = new Path(location);
-                FileSystem fs = path.getFileSystem(conf);
-                FileStatus[] status=fs.globStatus(path);
-                if (status != null){
-                    for (FileStatus s : status){
-                        size += getPathLength(fs, s);
+            for (String location : LoadFunc.getPathStrings(ld.getLFile().getFileName())) {
+                if (UriUtil.isHDFSFileOrLocalOrS3N(location)) {
+                    Path path = new Path(location);
+                    FileSystem fs = path.getFileSystem(conf);
+                    FileStatus[] status = fs.globStatus(path);
+                    if (status != null) {
+                        for (FileStatus s : status) {
+                            totalInputFileSize += Utils.getPathLength(fs, s);
+                        }
                     }
                 }
             }
         }
-        return size;
+        return totalInputFileSize;
     }
 
-    private static long getPathLength(FileSystem fs, FileStatus status) throws IOException{
-        if (!status.isDir()){
-            return status.getLen();
-        }else{
-            FileStatus[] children = fs.listStatus(status.getPath());
-            long size=0;
-            for (FileStatus child : children){
-                size +=getPathLength(fs, child);
-            }
-            return size;
+    /**
+     * Get the total input size in bytes by looking at statistics provided by
+     * loaders that implement @{link LoadMetadata}.
+     * @param ld
+     * @param job
+     * @return total input size in bytes, or 0 if unknown or incomplete
+     * @throws IOException on error
+     */
+    public static long getInputSizeFromLoader(POLoad ld, Job job) throws IOException {
+        if (ld.getLoadFunc() == null
+                || !(ld.getLoadFunc() instanceof LoadMetadata)
+                || ld.getLFile() == null
+                || ld.getLFile().getFileName() == null) {
+            return 0;
         }
+
+        ResourceStatistics statistics =
+                ((LoadMetadata) ld.getLoadFunc())
+                        .getStatistics(ld.getLFile().getFileName(), job);
+
+        if (statistics == null || statistics.getSizeInBytes() == null) {
+            return 0;
+        }
+
+        return statistics.getSizeInBytes();
     }
 }
