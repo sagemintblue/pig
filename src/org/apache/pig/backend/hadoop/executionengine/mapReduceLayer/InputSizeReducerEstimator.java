@@ -58,8 +58,8 @@ import java.util.List;
  * (1000*1000*1000+2*1000*1000*1000)/(1000*1000*1000)=3
  *
  */
-public class InputFileSizeReducerEstimator implements PigReducerEstimator {
-    private static final Log log = LogFactory.getLog(InputFileSizeReducerEstimator.class);
+public class InputSizeReducerEstimator implements PigReducerEstimator {
+    private static final Log log = LogFactory.getLog(InputSizeReducerEstimator.class);
 
     private static final String BYTES_PER_REDUCER_PARAM = "pig.exec.reducers.bytes.per.reducer";
     private static final String MAX_REDUCER_COUNT_PARAM = "pig.exec.reducers.max";
