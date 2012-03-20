@@ -49,7 +49,9 @@ import org.apache.hadoop.mapred.jobcontrol.JobControl;
 import org.apache.pig.ComparisonFunc;
 import org.apache.pig.ExecType;
 import org.apache.pig.LoadFunc;
+import org.apache.pig.LoadMetadata;
 import org.apache.pig.PigException;
+import org.apache.pig.ResourceStatistics;
 import org.apache.pig.StoreFuncInterface;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.HDataType;
@@ -321,7 +323,7 @@ public class JobControlCompiler{
      * the reduce plan and serializes it so that the PigMapReduce class can use it to package
      * the indexed tuples received by the reducer.
      * @param mro - The MapReduceOper for which the JobConf is required
-     * @param conf - the Configuration object from which JobConf is built
+     * @param config - the Configuration object from which JobConf is built
      * @param pigContext - The PigContext passed on from execution engine
      * @return Job corresponding to mro
      * @throws JobCreationException
@@ -597,7 +599,7 @@ public class JobControlCompiler{
 		else if (pigContext.defaultParallel > 0)
                     conf.set("mapred.reduce.tasks", ""+pigContext.defaultParallel);
                 else
-                    estimateNumberOfReducers(conf,lds);
+                    estimateNumberOfReducers(conf, lds, nwJob);
                 
                 if (mro.customPartitioner != null)
                 	nwJob.setPartitionerClass(PigContext.resolveClassName(mro.customPartitioner));
@@ -739,22 +741,23 @@ public class JobControlCompiler{
             throw new JobCreationException(msg, errCode, PigException.BUG, e);
         }
     }
-    
+
     /**
+<<<<<<< HEAD
      * Looks up the estimator from REDUCER_ESTIMATOR_KEY and invokes it to find the number of
      * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputFileSizeReducerEstimator
      * @param conf
      * @param lds
      * @throws IOException
      */
-    static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds) throws IOException {
+    static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds, org.apache.hadoop.mapreduce.Job job) throws IOException {
         PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
           new InputFileSizeReducerEstimator() :
           (PigReducerEstimator)PigContext.instantiateObjectFromParams(
             conf, REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
-        return estimator.estimateNumberOfReducers(conf, lds);
+        return estimator.estimateNumberOfReducers(conf, lds, job);
     }
 
     public static class PigSecondaryKeyGroupComparator extends WritableComparator {
