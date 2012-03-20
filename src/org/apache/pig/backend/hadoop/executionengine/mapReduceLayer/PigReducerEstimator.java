@@ -28,7 +28,7 @@ import java.util.List;
  * Interface to implement when you want to use a custom approach to estimating
  * the number of reducers for a job.
  *
- * @see InputFileSizeReducerEstimator
+ * @see InputSizeReducerEstimator
  */
 public interface PigReducerEstimator {
 
