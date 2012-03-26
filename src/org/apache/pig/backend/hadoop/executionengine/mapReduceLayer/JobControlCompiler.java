@@ -840,9 +840,14 @@ public class JobControlCompiler{
             return 0;
         }
 
-        ResourceStatistics statistics =
-                ((LoadMetadata) ld.getLoadFunc())
+        ResourceStatistics statistics; 
+        try {
+            statistics = ((LoadMetadata) ld.getLoadFunc())
                         .getStatistics(ld.getLFile().getFileName(), job);
+        } catch (Exception e) {
+            log.warn("Couldn't get statistics from LoadFunc: " + ld.getLoadFunc(), e);
+            return 0;
+        }
 
         if (statistics == null || statistics.getSizeInBytes() == null) {
             return 0;
