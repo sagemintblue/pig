@@ -747,7 +747,7 @@ public class JobControlCompiler{
      * @param lds
      * @throws IOException
      */
-    static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds,
+    public static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds,
                                         org.apache.hadoop.mapreduce.Job job) throws IOException {
         PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
           new InputSizeReducerEstimator() :
