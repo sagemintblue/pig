@@ -199,11 +199,16 @@ sub generateData
             'filetype' => "allscalar",
             'rows' => 10000,
             'outfile' => "singlefile/allscalar10k",
+        }, {
+            'name' => "numbers.txt",
+            'filetype' => "numbers",
+            'rows' => 5000,
+            'outfile' => "types/numbers.txt",
         }
     );
 
 	# Create the target directories
-    for my $dir ("singlefile", "dir", "glob/star/somegood",
+    for my $dir ("singlefile", "dir", "types", "glob/star/somegood",
             "glob/star/moregood", "glob/star/bad") {
         my @cmd = ("mkdir", "-p", "$cfg->{'inpathbase'}/$dir");
 	    $self->runCmd($log, \@cmd);
