@@ -20,6 +20,8 @@ package org.apache.pig.backend.hadoop.executionengine.mapReduceLayer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLoad;
+import org.apache.pig.classification.InterfaceAudience;
+import org.apache.pig.classification.InterfaceStability;
 
 import java.io.IOException;
 import java.util.List;
@@ -30,6 +32,8 @@ import java.util.List;
  *
  * @see InputSizeReducerEstimator
  */
+@InterfaceAudience.Public
+@InterfaceStability.Evolving
 public interface PigReducerEstimator {
 
     /**
@@ -38,7 +42,7 @@ public interface PigReducerEstimator {
      *
      * @param conf the job configuration
      * @param poLoadList list of POLoads used in the jobs physical plan
-     * @param job job configuration
+     * @param job job instance
      * @return the number of reducers to use
      * @throws IOException
      */

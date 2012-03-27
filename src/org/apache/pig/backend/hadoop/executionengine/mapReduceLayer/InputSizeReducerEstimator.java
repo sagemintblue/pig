@@ -70,9 +70,9 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
     /**
      * Determines the number of reducers to be used.
      *
-     * @param conf
-     * @param lds
-     * @param job job configuration
+     * @param conf the job configuration
+     * @param lds list of POLoads used in the jobs physical plan
+     * @param job job instance
      * @throws java.io.IOException
      */
     @Override
@@ -98,7 +98,7 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
      * their size nor can pig look that up itself are excluded from this size.
      */
     public static long getTotalInputFileSize(Configuration conf,
-                                             List<POLoad> lds, Job job) throws IOException {
+                                              List<POLoad> lds, Job job) throws IOException {
         long totalInputFileSize = 0;
         for (POLoad ld : lds) {
             long size = getInputSizeFromLoader(ld, job);
@@ -140,9 +140,14 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
             return 0;
         }
 
-        ResourceStatistics statistics =
-                ((LoadMetadata) ld.getLoadFunc())
+        ResourceStatistics statistics;
+        try {
+            statistics = ((LoadMetadata) ld.getLoadFunc())
                         .getStatistics(ld.getLFile().getFileName(), job);
+        } catch (Exception e) {
+            log.warn("Couldn't get statistics from LoadFunc: " + ld.getLoadFunc(), e);
+            return 0;
+        }
 
         if (statistics == null || statistics.getSizeInBytes() == null) {
             return 0;
