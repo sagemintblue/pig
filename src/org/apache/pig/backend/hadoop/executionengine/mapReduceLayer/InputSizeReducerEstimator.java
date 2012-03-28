@@ -97,8 +97,8 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
      * Get the input size for as many inputs as possible. Inputs that do not report
      * their size nor can pig look that up itself are excluded from this size.
      */
-    public static long getTotalInputFileSize(Configuration conf,
-                                              List<POLoad> lds, Job job) throws IOException {
+    static long getTotalInputFileSize(Configuration conf,
+                                      List<POLoad> lds, Job job) throws IOException {
         long totalInputFileSize = 0;
         for (POLoad ld : lds) {
             long size = getInputSizeFromLoader(ld, job);
@@ -132,7 +132,7 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
      * @return total input size in bytes, or 0 if unknown or incomplete
      * @throws IOException on error
      */
-    public static long getInputSizeFromLoader(POLoad ld, Job job) throws IOException {
+    static long getInputSizeFromLoader(POLoad ld, Job job) throws IOException {
         if (ld.getLoadFunc() == null
                 || !(ld.getLoadFunc() instanceof LoadMetadata)
                 || ld.getLFile() == null

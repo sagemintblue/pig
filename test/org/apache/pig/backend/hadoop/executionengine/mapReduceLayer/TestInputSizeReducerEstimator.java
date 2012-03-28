@@ -15,14 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pig.test;
+package org.apache.pig.backend.hadoop.executionengine.mapReduceLayer;
 
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.LoadFunc;
-import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.InputSizeReducerEstimator;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLoad;
 import org.apache.pig.builtin.PigStorage;
+import org.apache.pig.test.PigStorageWithStatistics;
+import org.apache.pig.test.TestJobControlCompiler;
 import org.junit.Assert;
 import org.junit.Test;
 

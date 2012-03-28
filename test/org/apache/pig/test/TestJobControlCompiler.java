@@ -150,7 +150,7 @@ public class TestJobControlCompiler {
                 new org.apache.hadoop.mapreduce.Job(CONF)));
     }
 
-    static POLoad createPOLoadWithSize(long size, LoadFunc loadFunc) throws Exception {
+    public static POLoad createPOLoadWithSize(long size, LoadFunc loadFunc) throws Exception {
         File file = File.createTempFile("tempFile", ".tmp");
         file.deleteOnExit();
         RandomAccessFile f = new RandomAccessFile(file, "rw");
