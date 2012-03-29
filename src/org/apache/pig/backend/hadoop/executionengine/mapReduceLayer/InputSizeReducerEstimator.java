@@ -84,7 +84,7 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
         log.info("BytesPerReducer=" + bytesPerReducer + " maxReducers="
             + maxReducers + " totalInputFileSize=" + totalInputFileSize);
 
-        int reducers = (int)Math.ceil((totalInputFileSize+0.0) / bytesPerReducer);
+        int reducers = (int)Math.ceil((double)totalInputFileSize / bytesPerReducer);
         reducers = Math.max(1, reducers);
         reducers = Math.min(maxReducers, reducers);
         conf.setInt("mapred.reduce.tasks", reducers);
