@@ -754,8 +754,8 @@ public class JobControlCompiler{
                                         org.apache.hadoop.mapreduce.Job job) throws IOException {
         PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
           new InputSizeReducerEstimator() :
-          (PigReducerEstimator)PigContext.instantiateObjectFromParams(
-            conf, REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY);
+          PigContext.instantiateObjectFromParams(conf,
+                  REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
         return estimator.estimateNumberOfReducers(conf, lds, job);

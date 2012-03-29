@@ -56,6 +56,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.pig.PigRunner.ReturnCode;
+import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
 import org.apache.pig.classification.InterfaceAudience;
 import org.apache.pig.classification.InterfaceStability;
@@ -644,11 +645,16 @@ static int run(String args[], PigProgressNotificationListener listener) {
 }
 
 protected static PigProgressNotificationListener makeListener(Properties properties) {
-    Object listener = PigContext.instantiateObjectFromParams(
-        ConfigurationUtil.toConfiguration(properties),
-        PROGRESS_NOTIFICATION_LISTENER_KEY, PROGRESS_NOTIFICATION_LISTENER_ARG_KEY);
 
-    return listener != null ? (PigProgressNotificationListener) listener : null;
+    try {
+        return PigContext.instantiateObjectFromParams(
+                    ConfigurationUtil.toConfiguration(properties),
+                    PROGRESS_NOTIFICATION_LISTENER_KEY,
+                    PROGRESS_NOTIFICATION_LISTENER_ARG_KEY,
+                    PigProgressNotificationListener.class);
+    } catch (ExecException e) {
+        throw new RuntimeException(e);
+    }
 }
 
 private static int getReturnCodeForStats(int[] stats) {
