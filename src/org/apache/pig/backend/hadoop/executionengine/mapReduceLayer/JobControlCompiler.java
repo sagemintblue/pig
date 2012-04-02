@@ -321,7 +321,7 @@ public class JobControlCompiler{
      * the reduce plan and serializes it so that the PigMapReduce class can use it to package
      * the indexed tuples received by the reducer.
      * @param mro - The MapReduceOper for which the JobConf is required
-     * @param conf - the Configuration object from which JobConf is built
+     * @param config - the Configuration object from which JobConf is built
      * @param pigContext - The PigContext passed on from execution engine
      * @return Job corresponding to mro
      * @throws JobCreationException
@@ -341,6 +341,7 @@ public class JobControlCompiler{
         ArrayList<FileSpec> inp = new ArrayList<FileSpec>();
         ArrayList<List<OperatorKey>> inpTargets = new ArrayList<List<OperatorKey>>();
         ArrayList<String> inpSignatureLists = new ArrayList<String>();
+        ArrayList<Long> inpLimits = new ArrayList<Long>();
         ArrayList<POStore> storeLocations = new ArrayList<POStore>();
         Path tmpLocation = null;
         
@@ -401,6 +402,7 @@ public class JobControlCompiler{
                     }
                     inpTargets.add(ldSucKeys);
                     inpSignatureLists.add(ld.getSignature());
+                    inpLimits.add(ld.getLimit());
                     //Remove the POLoad from the plan
                     if (!pigContext.inIllustrator)
                         mro.mapPlan.remove(ld);
@@ -430,6 +432,7 @@ public class JobControlCompiler{
             conf.set("pig.inputs", ObjectSerializer.serialize(inp));
             conf.set("pig.inpTargets", ObjectSerializer.serialize(inpTargets));
             conf.set("pig.inpSignatures", ObjectSerializer.serialize(inpSignatureLists));
+            conf.set("pig.inpLimits", ObjectSerializer.serialize(inpLimits));
             conf.set("pig.pigContext", ObjectSerializer.serialize(pigContext));
             conf.set("udf.import.list", ObjectSerializer.serialize(PigContext.getPackageImportList()));
             // this is for unit tests since some don't create PigServer
@@ -597,7 +600,7 @@ public class JobControlCompiler{
 		else if (pigContext.defaultParallel > 0)
                     conf.set("mapred.reduce.tasks", ""+pigContext.defaultParallel);
                 else
-                    estimateNumberOfReducers(conf,lds);
+                    estimateNumberOfReducers(conf, lds, nwJob);
                 
                 if (mro.customPartitioner != null)
                 	nwJob.setPartitionerClass(PigContext.resolveClassName(mro.customPartitioner));
@@ -739,22 +742,23 @@ public class JobControlCompiler{
             throw new JobCreationException(msg, errCode, PigException.BUG, e);
         }
     }
-    
+
     /**
      * Looks up the estimator from REDUCER_ESTIMATOR_KEY and invokes it to find the number of
-     * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputFileSizeReducerEstimator
+     * reducers to use. If REDUCER_ESTIMATOR_KEY isn't set, defaults to InputSizeReducerEstimator
      * @param conf
      * @param lds
      * @throws IOException
      */
-    static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds) throws IOException {
+    public static int estimateNumberOfReducers(Configuration conf, List<POLoad> lds,
+                                        org.apache.hadoop.mapreduce.Job job) throws IOException {
         PigReducerEstimator estimator = conf.get(REDUCER_ESTIMATOR_KEY) == null ?
-          new InputFileSizeReducerEstimator() :
-          (PigReducerEstimator)PigContext.instantiateObjectFromParams(
-            conf, REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY);
+          new InputSizeReducerEstimator() :
+          PigContext.instantiateObjectFromParams(conf,
+                  REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
-        return estimator.estimateNumberOfReducers(conf, lds);
+        return estimator.estimateNumberOfReducers(conf, lds, job);
     }
 
     public static class PigSecondaryKeyGroupComparator extends WritableComparator {
