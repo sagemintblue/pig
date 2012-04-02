@@ -510,21 +510,29 @@ public class PigContext implements Serializable {
      * @param conf
      * @param classParamKey the property used to identify the class
      * @param argParamKey the property used to identify the class args
+     * @param clazz The class that is expected
      * @return
      */
-    public static Object instantiateObjectFromParams(Configuration conf,
-                                                     String classParamKey,
-                                                     String argParamKey) {
+    public static <T> T instantiateObjectFromParams(Configuration conf,
+                                                    String classParamKey,
+                                                    String argParamKey,
+                                                    Class<T> clazz) throws ExecException {
       String className = conf.get(classParamKey);
 
       if (className != null) {
-          FuncSpec fs = null;
+          FuncSpec fs;
           if (conf.get(argParamKey) != null) {
               fs = new FuncSpec(className, conf.get(argParamKey));
           } else {
               fs = new FuncSpec(className);
           }
-          return PigContext.instantiateFuncFromSpec(fs);
+          try {
+            return clazz.cast(PigContext.instantiateFuncFromSpec(fs));
+          }
+          catch (ClassCastException e) {
+              throw new ExecException("The class defined by " + classParamKey +
+                      " in conf is not of type " + clazz.getName(), e);
+          }
       } else {
           return null;
       }
