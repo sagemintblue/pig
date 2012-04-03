@@ -36,6 +36,12 @@ import java.util.List;
 @InterfaceStability.Evolving
 public interface PigReducerEstimator {
 
+    static final String BYTES_PER_REDUCER_PARAM = "pig.exec.reducers.bytes.per.reducer";
+    static final String MAX_REDUCER_COUNT_PARAM = "pig.exec.reducers.max";
+
+    static final long DEFAULT_BYTES_PER_REDUCER = 1000 * 1000 * 1000;
+    static final int DEFAULT_MAX_REDUCER_COUNT_PARAM = 999;
+
     /**
      * Estimate the number of reducers for a given job based on the collection
      * of load funcs passed.
