@@ -758,7 +758,12 @@ public class JobControlCompiler{
                   REDUCER_ESTIMATOR_KEY, REDUCER_ESTIMATOR_ARG_KEY, PigReducerEstimator.class);
 
         log.info("Using reducer estimator: " + estimator.getClass().getName());
-        return estimator.estimateNumberOfReducers(conf, lds, job);
+        int numberOfReducers = estimator.estimateNumberOfReducers(conf, lds, job);
+        conf.setInt("mapred.reduce.tasks", numberOfReducers);
+
+        log.info("Neither PARALLEL nor default parallelism is set for this job. Setting number of "
+                + "reducers to " + numberOfReducers);
+        return numberOfReducers;
     }
 
     public static class PigSecondaryKeyGroupComparator extends WritableComparator {
