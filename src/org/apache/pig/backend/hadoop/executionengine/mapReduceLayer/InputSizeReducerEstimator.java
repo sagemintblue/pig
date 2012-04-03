@@ -61,12 +61,6 @@ import java.util.List;
 public class InputSizeReducerEstimator implements PigReducerEstimator {
     private static final Log log = LogFactory.getLog(InputSizeReducerEstimator.class);
 
-    private static final String BYTES_PER_REDUCER_PARAM = "pig.exec.reducers.bytes.per.reducer";
-    private static final String MAX_REDUCER_COUNT_PARAM = "pig.exec.reducers.max";
-
-    private static final long DEFAULT_BYTES_PER_REDUCER = 1000 * 1000 * 1000;
-    private static final int DEFAULT_MAX_REDUCER_COUNT_PARAM = 999;
-
     /**
      * Determines the number of reducers to be used.
      *
@@ -87,9 +81,7 @@ public class InputSizeReducerEstimator implements PigReducerEstimator {
         int reducers = (int)Math.ceil((double)totalInputFileSize / bytesPerReducer);
         reducers = Math.max(1, reducers);
         reducers = Math.min(maxReducers, reducers);
-        conf.setInt("mapred.reduce.tasks", reducers);
 
-        log.info("Neither PARALLEL nor default parallelism is set for this job. Setting number of reducers to " + reducers);
         return reducers;
     }
 
