@@ -9,10 +9,7 @@ import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.tools.pigstats.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Hacked up code for how we can gather stats as jobs kick off and expose them in a web UI
@@ -23,6 +20,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
   private List<JobInfo> jobInfoList = new ArrayList<JobInfo>();
 
   private String scriptFingerprint;
+  private Map<String, DAGNode> dagNodeNameMap = new HashMap<String, DAGNode>();
 
   public PigStatsDataVizCollector() { }
 
@@ -30,15 +28,15 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
   public void initialPlanNotification(MROperPlan plan) {
     Map<OperatorKey, MapReduceOper>  planKeys = plan.getKeys();
     for (Map.Entry<OperatorKey, MapReduceOper> entry : planKeys.entrySet()) {
-      OperatorKey operatorKey = entry.getKey();
-      MapReduceOper mapReduceOper = entry.getValue();
-      String scope = operatorKey.toString();
-      String alias = ScriptState.get().getAlias(mapReduceOper);
-      String feature = ScriptState.get().getPigFeature(mapReduceOper);
+      //TODO: represent the edges in the DAG
+      //TODO: expose as JSON
+      DAGNode node = new DAGNode(entry.getKey(), entry.getValue());
+      dagNodeNameMap.put(node.getName(), node);
 
       // this shows how we can get the basic info about all nameless jobs before any execute.
       // we can traverse the plan to build a DAG of this info
-      LOG.info("initialPlanNotification: alias: " + alias + ", scope: " + scope + ", feature: " + feature);
+      LOG.info("initialPlanNotification: alias: " + node.getAlias()
+              + ", name: " + node.getName() + ", feature: " + node.getFeature());
     }
   }
 
@@ -51,10 +49,42 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
     for (JobStats jobStats : jobGraph) {
       if (assignedJobId.equals(jobStats.getJobId())) {
         LOG.info("jobStartedNotification - scope " + jobStats.getName() + " is jobId " + assignedJobId);
+        if (dagNodeNameMap.get(jobStats.getName()) == null) {
+          LOG.warn("jobStartedNotification - unrecorgnized operator name found ("
+                  + jobStats.getName() + ") for jobId " + assignedJobId);
+        } else {
+          dagNodeNameMap.get(jobStats.getName()).setJobId(assignedJobId);
+        }
       }
     }
   }
 
+  /**
+   * Class that represents a Node in the DAG. This class can be converted to JSON as-is by doing
+   * something like this:
+   * ObjectMapper om = new ObjectMapper();
+   * om.getSerializationConfig().set(SerializationConfig.Feature.INDENT_OUTPUT, true);
+   * String json = om.writeValueAsString(dagNode);
+   */
+  private static class DAGNode {
+      private String name;
+      private String alias;
+      private String feature;
+      private String jobId;
+
+      private DAGNode(OperatorKey operatorKey, MapReduceOper mapReduceOper) {
+          this.name = operatorKey.toString();
+          this.alias = ScriptState.get().getAlias(mapReduceOper);
+          this.feature = ScriptState.get().getPigFeature(mapReduceOper);
+      }
+
+      public String getName() { return name; }
+      public String getAlias() { return alias; }
+      public String getFeature() { return feature; }
+
+      public String getJobId() { return jobId; }
+      public void setJobId(String jobId) { jobId = jobId; }
+  }
 
   /* The code below is all borrowed from my stats collection work. We'd change it to our needs */
 
