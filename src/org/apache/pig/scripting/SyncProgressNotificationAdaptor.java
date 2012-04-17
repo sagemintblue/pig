@@ -20,6 +20,7 @@ package org.apache.pig.scripting;
 
 import java.util.List;
 
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.tools.pigstats.JobStats;
 import org.apache.pig.tools.pigstats.OutputStats;
 import org.apache.pig.tools.pigstats.PigProgressNotificationListener;
@@ -31,6 +32,15 @@ class SyncProgressNotificationAdaptor implements PigProgressNotificationListener
     public SyncProgressNotificationAdaptor(
             List<PigProgressNotificationListener> listeners) {
         this.listeners = listeners;
+    }
+
+    @Override
+    public void initialPlanNotification(MROperPlan plan) {
+        synchronized (listeners) {
+            for (PigProgressNotificationListener listener : listeners) {
+                listener.initialPlanNotification(plan);
+            }
+        }
     }
 
     @Override

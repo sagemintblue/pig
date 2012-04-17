@@ -40,6 +40,7 @@ import org.apache.pig.ExecType;
 import org.apache.pig.PigRunner;
 import org.apache.pig.PigRunner.ReturnCode;
 import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.impl.PigContext;
 import org.apache.pig.impl.io.FileLocalizer;
 import org.apache.pig.newplan.Operator;
@@ -870,6 +871,9 @@ public class TestPigRunner {
         private static final int JobStarted = 2;
         private static final int JobFinished = 3;
         
+        @Override
+        public void initialPlanNotification(MROperPlan plan) { }
+
         @Override
         public void launchStartedNotification(String id, int numJobsToLaunch) {            
             System.out.println("id: " + id + " numJobsToLaunch: " + numJobsToLaunch);  
