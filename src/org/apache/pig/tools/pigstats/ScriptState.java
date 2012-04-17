@@ -44,6 +44,7 @@ import org.apache.hadoop.util.VersionInfo;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOper;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.NativeMapReduceOper;
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.PhysicalOperator;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhyPlanVisitor;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.plans.PhysicalPlan;
@@ -218,6 +219,12 @@ public class ScriptState {
         return listeners;
     }
         
+    public void emitInitialPlanNotification(MROperPlan plan) {
+        for (PigProgressNotificationListener listener: listeners) {
+            listener.initialPlanNotification(plan);
+        }
+    }
+
     public void emitLaunchStartedNotification(int numJobsToLaunch) {
         for (PigProgressNotificationListener listener: listeners) {
             listener.launchStartedNotification(id, numJobsToLaunch);
@@ -448,7 +455,7 @@ public class ScriptState {
         return featureLongToString(scriptFeatures);
     }
     
-    String getAlias(MapReduceOper mro) {
+    public String getAlias(MapReduceOper mro) {
         if (aliasMap == null) {
             aliasMap = new HashMap<MapReduceOper, String>();
         }
@@ -470,7 +477,7 @@ public class ScriptState {
         return retStr;
     }
 
-    String getPigFeature(MapReduceOper mro) {
+    public String getPigFeature(MapReduceOper mro) {
         if (featureMap == null) {
             featureMap = new HashMap<MapReduceOper, String>();
         }

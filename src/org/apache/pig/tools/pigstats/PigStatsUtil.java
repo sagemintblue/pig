@@ -164,6 +164,7 @@ public abstract class PigStatsUtil {
         SimplePigStats ps = (SimplePigStats)PigStats.start();
         ps.start(pc, client, jcc, plan);
         
+        ScriptState.get().emitInitialPlanNotification(plan);
         ScriptState.get().emitLaunchStartedNotification(plan.size());
     }
      

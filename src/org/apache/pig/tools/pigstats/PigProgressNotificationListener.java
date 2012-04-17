@@ -18,6 +18,7 @@
 
 package org.apache.pig.tools.pigstats;
 
+import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.classification.InterfaceAudience;
 import org.apache.pig.classification.InterfaceStability;
 
@@ -31,7 +32,9 @@ import org.apache.pig.PigRunner;
 @InterfaceStability.Evolving
 public interface PigProgressNotificationListener extends java.util.EventListener {
     
-    /** 
+    public void initialPlanNotification(MROperPlan plan);
+
+    /**
      * Invoked just before launching MR jobs spawned by the script.
      * @param scriptId the unique id of the script
      * @param numJobsToLaunch the total number of MR jobs spawned by the script
