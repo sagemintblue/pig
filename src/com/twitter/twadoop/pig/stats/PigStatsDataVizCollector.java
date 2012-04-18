@@ -7,6 +7,7 @@ import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOpe
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.tools.pigstats.*;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import java.io.IOException;
@@ -49,20 +50,23 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
               + ", name: " + node.getName() + ", feature: " + node.getFeature());
     }
 
-    // second pass connectst the edges
+    // second pass connects the edges
     for (Map.Entry<OperatorKey, MapReduceOper> entry : planKeys.entrySet()) {
       DAGNode node = dagNodeNameMap.get(entry.getKey().toString());
       List<DAGNode> successorNodeList = new ArrayList<DAGNode>();
+      List<String> successorNames = new ArrayList<String>();
       List<MapReduceOper> successors = plan.getSuccessors(entry.getValue());
 
       if (successors != null) {
         for (MapReduceOper successor : successors) {
           DAGNode successorNode = dagNodeNameMap.get(successor.getOperatorKey().toString());
           successorNodeList.add(successorNode);
+          successorNames.add(successorNode.getName());
         }
       }
 
       node.setSuccessors(successorNodeList);
+      node.setSuccessorNames(successorNames);
     }
   }
 
@@ -101,6 +105,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       private String feature;
       private String jobId;
       private Collection<DAGNode> successors;
+      private Collection<String> successorNames;
 
       private DAGNode(OperatorKey operatorKey, MapReduceOper mapReduceOper) {
           this.name = operatorKey.toString();
@@ -109,15 +114,27 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       }
 
       public String getName() { return name; }
+
+      @JsonIgnore
       public String getAlias() { return alias; }
+      public String[] getAliases() { return alias == null ? new String[0] : alias.split(","); }
+
+      @JsonIgnore
       public String getFeature() { return feature; }
+      public String[] getFeatures() { return feature == null ? new String[0] : feature.split(","); }
 
       public String getJobId() { return jobId; }
       public void setJobId(String jobId) { this.jobId = jobId; }
 
+      @JsonIgnore
       public Collection<DAGNode> getSuccessors() { return successors;}
       public void setSuccessors(Collection<DAGNode> successors) {
           this.successors = successors;
+      }
+
+      public Collection<String> getSuccessorNames() { return successorNames; }
+      public void setSuccessorNames(Collection<String> successorNames) {
+          this.successorNames = successorNames;
       }
   }
 
