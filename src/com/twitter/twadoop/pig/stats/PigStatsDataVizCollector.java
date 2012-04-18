@@ -7,6 +7,7 @@ import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOpe
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.impl.plan.OperatorKey;
 import org.apache.pig.tools.pigstats.*;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,16 +21,25 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
   private List<JobInfo> jobInfoList = new ArrayList<JobInfo>();
 
   private String scriptFingerprint;
-  private Map<String, DAGNode> dagNodeNameMap = new HashMap<String, DAGNode>();
+  private volatile Map<String, DAGNode> dagNodeNameMap = new HashMap<String, DAGNode>();
 
-  public PigStatsDataVizCollector() { }
+  ScriptStatusServer server;
 
-  @Override
+  public PigStatsDataVizCollector() {
+    server = new ScriptStatusServer(this, 8080);
+    server.start();
+  }
+
+  public Map<String, DAGNode> getDagNodeNameMap() {
+    return dagNodeNameMap;
+  }
+
+    @Override
   public void initialPlanNotification(MROperPlan plan) {
     Map<OperatorKey, MapReduceOper>  planKeys = plan.getKeys();
+
+    // first pass builds all nodes
     for (Map.Entry<OperatorKey, MapReduceOper> entry : planKeys.entrySet()) {
-      //TODO: represent the edges in the DAG
-      //TODO: expose as JSON
       DAGNode node = new DAGNode(entry.getKey(), entry.getValue());
       dagNodeNameMap.put(node.getName(), node);
 
@@ -37,6 +47,22 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       // we can traverse the plan to build a DAG of this info
       LOG.info("initialPlanNotification: alias: " + node.getAlias()
               + ", name: " + node.getName() + ", feature: " + node.getFeature());
+    }
+
+    // second pass connectst the edges
+    for (Map.Entry<OperatorKey, MapReduceOper> entry : planKeys.entrySet()) {
+      DAGNode node = dagNodeNameMap.get(entry.getKey().toString());
+      List<DAGNode> successorNodeList = new ArrayList<DAGNode>();
+      List<MapReduceOper> successors = plan.getSuccessors(entry.getValue());
+
+      if (successors != null) {
+        for (MapReduceOper successor : successors) {
+          DAGNode successorNode = dagNodeNameMap.get(successor.getOperatorKey().toString());
+          successorNodeList.add(successorNode);
+        }
+      }
+
+      node.setSuccessors(successorNodeList);
     }
   }
 
@@ -66,11 +92,15 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
    * om.getSerializationConfig().set(SerializationConfig.Feature.INDENT_OUTPUT, true);
    * String json = om.writeValueAsString(dagNode);
    */
-  private static class DAGNode {
+  @JsonSerialize(
+    include=JsonSerialize.Inclusion.NON_NULL
+  )
+  public static class DAGNode {
       private String name;
       private String alias;
       private String feature;
       private String jobId;
+      private Collection<DAGNode> successors;
 
       private DAGNode(OperatorKey operatorKey, MapReduceOper mapReduceOper) {
           this.name = operatorKey.toString();
@@ -83,7 +113,12 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       public String getFeature() { return feature; }
 
       public String getJobId() { return jobId; }
-      public void setJobId(String jobId) { jobId = jobId; }
+      public void setJobId(String jobId) { this.jobId = jobId; }
+
+      public Collection<DAGNode> getSuccessors() { return successors;}
+      public void setSuccessors(Collection<DAGNode> successors) {
+          this.successors = successors;
+      }
   }
 
   /* The code below is all borrowed from my stats collection work. We'd change it to our needs */
@@ -158,7 +193,15 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
   public void outputCompletedNotification(String scriptId, OutputStats outputStats) { }
 
   @Override
-  public void progressUpdatedNotification(String scriptId, int progress) { }
+  public void progressUpdatedNotification(String scriptId, int progress) {
+    if (progress == 100) {
+        try {
+            if (server != null) { server.stop(); }
+        } catch (Exception e) {
+            LOG.warn("Couldn't shut down ScriptStatusServer", e);
+        }
+    }
+  }
 
   private static Properties filterProperties(Properties input, String... prefixes) {
     Properties filtered = new Properties();
