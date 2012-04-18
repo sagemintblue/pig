@@ -12,6 +12,9 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Hacked up code for how we can gather stats as jobs kick off and expose them in a web UI
@@ -79,11 +82,13 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
     for (JobStats jobStats : jobGraph) {
       if (assignedJobId.equals(jobStats.getJobId())) {
         LOG.info("jobStartedNotification - scope " + jobStats.getName() + " is jobId " + assignedJobId);
-        if (dagNodeNameMap.get(jobStats.getName()) == null) {
+        DAGNode node = dagNodeNameMap.get(jobStats.getName());
+        if (node == null) {
           LOG.warn("jobStartedNotification - unrecorgnized operator name found ("
                   + jobStats.getName() + ") for jobId " + assignedJobId);
         } else {
-          dagNodeNameMap.get(jobStats.getName()).setJobId(assignedJobId);
+          node.setJobId(assignedJobId);
+          pushEvent(PigScriptEvent.EVENT_TYPE.JOB_STARTED, node);
         }
       }
     }
@@ -138,16 +143,52 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       }
   }
 
+  private SortedMap<Integer, PigScriptEvent> eventMap = new ConcurrentSkipListMap<Integer, PigScriptEvent>();
+
+  public Collection<PigScriptEvent> getEventsSinceId(int id) {
+    SortedMap<Integer, PigScriptEvent> tailMap = eventMap.tailMap(id);
+    return tailMap.values();
+  }
+
+  private void pushEvent(PigScriptEvent.EVENT_TYPE eventType, Object eventData) {
+    PigScriptEvent event = new PigScriptEvent(eventType, eventData);
+    eventMap.put(event.getEventId(), event);
+  }
+
+  public static class PigScriptEvent {
+      private static AtomicInteger NEXT_ID = new AtomicInteger();
+      public static enum EVENT_TYPE { JOB_STARTED, JOB_FINISHED, JOB_FAILED };
+
+      private long timestamp;
+      private int eventId;
+      private EVENT_TYPE eventType;
+      private Object eventData;
+
+      public PigScriptEvent(EVENT_TYPE eventType, Object eventData) {
+          this.eventId = NEXT_ID.incrementAndGet();
+          this.timestamp = System.currentTimeMillis();
+          this.eventType = eventType;
+          this.eventData = eventData;
+      }
+
+      public long getTimestamp() { return timestamp; }
+      public int getEventId() { return eventId; }
+      public EVENT_TYPE getEventType() { return eventType; }
+      public Object getEventData() { return eventData; }
+  }
+
   /* The code below is all borrowed from my stats collection work. We'd change it to our needs */
 
   @Override
   public void jobFailedNotification(String scriptId, JobStats stats) {
-    collectStats(scriptId, stats);
+    JobInfo jobInfo = collectStats(scriptId, stats);
+    pushEvent(PigScriptEvent.EVENT_TYPE.JOB_FAILED, jobInfo);
   }
 
   @Override
   public void jobFinishedNotification(String scriptId, JobStats stats) {
-    collectStats(scriptId, stats);
+    JobInfo jobInfo = collectStats(scriptId, stats);
+    pushEvent(PigScriptEvent.EVENT_TYPE.JOB_FINISHED, jobInfo);
   }
 
   @Override
@@ -180,7 +221,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
    * @param stats
    * @return
    */
-  protected void collectStats(String scriptId, JobStats stats) {
+  protected JobInfo collectStats(String scriptId, JobStats stats) {
 
     // put the job conf into a Properties object so we can serialize them
     Properties jobConfProperties = new Properties();
@@ -197,7 +238,10 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
       }
     }
 
-    jobInfoList.add(new JobInfo(stats, jobConfProperties));
+    JobInfo info = new JobInfo(stats, jobConfProperties);
+    jobInfoList.add(info);
+
+    return info;
   }
 
   @Override

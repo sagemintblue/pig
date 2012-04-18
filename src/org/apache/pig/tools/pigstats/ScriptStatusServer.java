@@ -70,9 +70,10 @@ public class ScriptStatusServer implements Runnable {
                 Collection<PigStatsDataVizCollector.DAGNode> nodes = statsCollector.getDagNodeNameMap().values();
                 sendJson(response, nodes.toArray(new PigStatsDataVizCollector.DAGNode[nodes.size()]));
             } else if (target.startsWith("/events")) {
-                // TODO: implement event queue
-                Collection<PigStatsDataVizCollector.DAGNode> nodes = statsCollector.getDagNodeNameMap().values();
-                sendJson(response, nodes.toArray(new PigStatsDataVizCollector.DAGNode[nodes.size()]));
+                Integer sinceId = request.getParameter("sinceId") != null ?
+                        Integer.getInteger(request.getParameter("sinceId")) : -1;
+                Collection<PigStatsDataVizCollector.PigScriptEvent> events = statsCollector.getEventsSinceId(sinceId);
+                sendJson(response, events.toArray(new PigStatsDataVizCollector.PigScriptEvent[events.size()]));
             } else {
                 HashMap<String, String> errorMap = new HashMap<String,String>();
                 errorMap.put("message", "Invalid request URI target: " + target);
@@ -85,6 +86,7 @@ public class ScriptStatusServer implements Runnable {
         ObjectMapper om = new ObjectMapper();
         om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
         om.configure(SerializationConfig.Feature.WRAP_EXCEPTIONS, true);
+        om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
         response.getWriter().println(om.writeValueAsString(object));
         response.getWriter().flush();
     }
