@@ -12,7 +12,6 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -157,7 +156,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
 
   public static class PigScriptEvent {
       private static AtomicInteger NEXT_ID = new AtomicInteger();
-      public static enum EVENT_TYPE { JOB_STARTED, JOB_FINISHED, JOB_FAILED };
+      public static enum EVENT_TYPE { JOB_STARTED, JOB_FINISHED, JOB_FAILED, SCRIPT_PROGRESS };
 
       private long timestamp;
       private int eventId;
@@ -255,11 +254,16 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
 
   @Override
   public void progressUpdatedNotification(String scriptId, int progress) {
+    Map<String, String> eventData = new HashMap<String, String>();
+    eventData.put("scriptProgress", Integer.toString(progress));
+    pushEvent(PigScriptEvent.EVENT_TYPE.SCRIPT_PROGRESS, eventData);
+
     if (progress == 100) {
         try {
-            if (server != null) { server.stop(); }
-        } catch (Exception e) {
-            LOG.warn("Couldn't shut down ScriptStatusServer", e);
+            LOG.info("Job complete but sleeping for 10 minutes to keep the PigStats REST server running. Hit ctrl-c to exit.");
+            Thread.sleep(600000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
   }

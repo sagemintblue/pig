@@ -24,6 +24,7 @@ public class ScriptStatusServer implements Runnable {
     private int port;
     private PigStatsDataVizCollector statsCollector;
     private Server server;
+    Thread serverThread;
 
     public ScriptStatusServer(PigStatsDataVizCollector statsCollector, int port) {
         this.port = port;
@@ -32,7 +33,7 @@ public class ScriptStatusServer implements Runnable {
 
     public void start() {
         try {
-          Thread serverThread = new Thread(this);
+          serverThread = new Thread(this);
           serverThread.setDaemon(false);
           serverThread.start();
         } catch (Exception e) {
@@ -44,7 +45,7 @@ public class ScriptStatusServer implements Runnable {
     public void run() {
         server = new Server(port);
         server.setHandler(new DAGHandler());
-        server.setStopAtShutdown(true);
+        server.setStopAtShutdown(false);
 
         try {
             server.start();
