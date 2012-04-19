@@ -401,7 +401,7 @@ public final class SimplePigStats extends PigStats {
         return startTime > 0;
     }
     
-    JobClient getJobClient() {
+    public JobClient getJobClient() {
         return jobClient;
     }
     

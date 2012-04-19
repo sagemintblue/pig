@@ -86,7 +86,6 @@ public class ScriptStatusServer implements Runnable {
     private static void sendJson(HttpServletResponse response, Object object) throws IOException {
         ObjectMapper om = new ObjectMapper();
         om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
-        om.configure(SerializationConfig.Feature.WRAP_EXCEPTIONS, true);
         om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
         response.getWriter().println(om.writeValueAsString(object));
         response.getWriter().flush();

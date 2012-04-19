@@ -3,6 +3,7 @@ package com.twitter.twadoop.pig.stats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapred.*;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.MapReduceOper;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.plans.MROperPlan;
 import org.apache.pig.impl.plan.OperatorKey;
@@ -88,6 +89,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
         } else {
           node.setJobId(assignedJobId);
           pushEvent(PigScriptEvent.EVENT_TYPE.JOB_STARTED, node);
+          pushJobStatusEvent(assignedJobId);
         }
       }
     }
@@ -156,7 +158,7 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
 
   public static class PigScriptEvent {
       private static AtomicInteger NEXT_ID = new AtomicInteger();
-      public static enum EVENT_TYPE { JOB_STARTED, JOB_FINISHED, JOB_FAILED, SCRIPT_PROGRESS };
+      public static enum EVENT_TYPE { JOB_STARTED, JOB_FINISHED, JOB_FAILED, JOB_PROGRESS, SCRIPT_PROGRESS };
 
       private long timestamp;
       private int eventId;
@@ -254,18 +256,49 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
 
   @Override
   public void progressUpdatedNotification(String scriptId, int progress) {
+
+    // first we report the scripts progress
     Map<String, String> eventData = new HashMap<String, String>();
     eventData.put("scriptProgress", Integer.toString(progress));
     pushEvent(PigScriptEvent.EVENT_TYPE.SCRIPT_PROGRESS, eventData);
 
+    // then for each running job, we report the job progress
+    for (DAGNode node : dagNodeNameMap.values()) { pushJobStatusEvent(node.getJobId()); }
+
     if (progress == 100) {
-        try {
-            LOG.info("Job complete but sleeping for 10 minutes to keep the PigStats REST server running. Hit ctrl-c to exit.");
-            Thread.sleep(600000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+      try {
+        LOG.info("Job complete but sleeping for 10 minutes to keep the PigStats REST server running. Hit ctrl-c to exit.");
+        Thread.sleep(600000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
+  }
+
+  private void pushJobStatusEvent(String jobId)  {
+    // then for each running job, we report the job progress
+    JobClient jobClient = ((SimplePigStats)PigStats.get()).getJobClient();
+      try {
+        RunningJob rj = jobClient.getJob(jobId);
+        if (rj == null) { return; }
+
+        JobID jobID = rj.getID();
+        TaskReport[] mapTaskReport = jobClient.getMapTaskReports(jobID);
+        TaskReport[] reduceTaskReport = jobClient.getReduceTaskReports(jobID);
+        Map<String, String> progressMap = new HashMap<String, String>();
+        progressMap.put("jobId", jobId.toString());
+        progressMap.put("jobName", rj.getJobName());
+        progressMap.put("trackingUrl", rj.getTrackingURL());
+        progressMap.put("isComplete", Boolean.toString(rj.isComplete()));
+        progressMap.put("isSuccessful", Boolean.toString(rj.isSuccessful()));
+        progressMap.put("mapProgress", Float.toString(rj.mapProgress()));
+        progressMap.put("reduceProgress", Float.toString(rj.reduceProgress()));
+        progressMap.put("totalMappers", Integer.toString(mapTaskReport.length));
+        progressMap.put("totalReducers", Integer.toString(reduceTaskReport.length));
+        pushEvent(PigScriptEvent.EVENT_TYPE.JOB_PROGRESS, progressMap);
+      } catch (IOException e) {
+        LOG.error("Error getting job info.", e);
+      }
   }
 
   private static Properties filterProperties(Properties input, String... prefixes) {
