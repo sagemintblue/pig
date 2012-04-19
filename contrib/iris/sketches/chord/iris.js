@@ -49,6 +49,15 @@ var jobs;
 var r1 = 600 / 2;
 var r0 = r1 - 120;
 
+// define color palette
+var fill = d3.scale.category20b();
+
+// job dependencies are visualized by chords
+var chord = d3.layout.chord()
+  .padding(0.04)
+  .sortSubgroups(d3.descending)
+  .sortChords(d3.descending);
+
 function groupStartAngle(d) {
   return (2 * Math.PI / jobs.length) * d.index;
 }
@@ -57,15 +66,6 @@ function groupEndAngle(d) {
   var r = 2 * Math.PI / jobs.length;
   return r * (d.index + 1) - r * 0.1;
 }
-
-// define color palette
-var fill = d3.scale.category20c();
-
-// job dependencies are visualized by chords
-var chord = d3.layout.chord()
-  .padding(0.04)
-  .sortSubgroups(d3.descending)
-  .sortChords(d3.descending);
 
 // jobs themselves are arc segments around the edge of the chord diagram
 var arc = d3.svg.arc()
@@ -91,23 +91,25 @@ d3.json("jobs.json", function(data) {
  * Initialize visualization.
  */
 function initialize() {
-  var indexByName = {},
+  var jobByName = {},
+    indexByName = {},
     nameByIndex = {},
     matrix = [],
     n = 0;
 
-  // Returns the job index from a full job identifier
-  function name(name) {
-    return name;
-  }
-
-  // Compute a unique index for each job index
+  // Compute a unique index for each job name
   jobs.forEach(function(j) {
-    var id = name(j.name);
-    if (!(id in indexByName)) {
-      nameByIndex[n] = id;
-      indexByName[id] = n++;
+    if (!(j.name in indexByName)) {
+      nameByIndex[n] = j.name;
+      jobByName[j.name] = j;
+      indexByName[j.name] = n++;
     }
+  });
+
+  // Add predecessor and successor index maps to all jobs
+  jobs.forEach(function (j) {
+    j.predecessorIndices = {};
+    j.successorIndices = {};
   });
 
   // Construct a square matrix counting dependencies
@@ -118,12 +120,15 @@ function initialize() {
     }
   }
   jobs.forEach(function(j) {
-    var pid = indexByName[name(j.name)];
-    if (j.successorNames.length == 0) {
-//      j.successorNames[0] = j.name
-    }
+    var p = indexByName[j.name];
     j.successorNames.forEach(function(n) {
-      matrix[indexByName[name(n)]][pid]++;
+      var s = indexByName[n];
+      matrix[s][p]++;
+
+      // initialize predecessor and successor indices
+      j.successorIndices[s] = d3.keys(j.successorIndices).length;
+      var sj = jobByName[n];
+      sj.predecessorIndices[p] = d3.keys(sj.predecessorIndices).length;
     });
   });
 
@@ -131,11 +136,37 @@ function initialize() {
 
   // override start and end angles for groups and chords
   groups = chord.groups();
+  chords = chord.chords();
 
   for (var i = 0; i < groups.length; i++) {
     var d = groups[i];
     d.startAngle = groupStartAngle(d);
     d.endAngle = groupEndAngle(d);
+  }
+
+  function chordAngle(d, f, i, n) {
+    var g = groups[d.index];
+    var s = g.startAngle;
+    var e = g.endAngle;
+    var r = (e - s) / 2;
+    var ri = r / n;
+    return s + r * (f ? 0 : 1) + ri * i;
+  }
+
+  for (var i = 0; i < chords.length; i++) {
+    var d = chords[i];
+    var s = d.source;
+    var t = d.target;
+    var sj = jobByName[nameByIndex[s.index]];
+    var tj = jobByName[nameByIndex[t.index]];
+    var si = sj.predecessorIndices[t.index];
+    var ti = tj.successorIndices[s.index];
+    var sn = d3.keys(sj.predecessorIndices).length;
+    var tn = d3.keys(tj.successorIndices).length;
+    s.startAngle = chordAngle(s, true, si, sn);
+    s.endAngle = chordAngle(s, true, si + 1, sn);
+    t.startAngle = chordAngle(t, false, ti, tn);
+    t.endAngle = chordAngle(t, false, ti + 1, tn);
   }
 
   var g = svg.selectAll("g.group")
@@ -159,12 +190,12 @@ function initialize() {
     .text(function(d) { return nameByIndex[d.index]; });
 
   svg.selectAll("path.chord")
-    .data(chord.chords)
+    .data(chords)
     .enter().append("svg:path")
     .attr("class", "chord")
     .style("stroke", function(d) { return d3.rgb(fill(d.source.index)).darker(); })
     .style("fill", function(d) { return fill(d.source.index); })
-    .attr("d", d3.svg.chord().startAngle(groupStartAngle).endAngle(groupEndAngle).radius(r0));
+    .attr("d", d3.svg.chord().radius(r0));
 
 }
 
