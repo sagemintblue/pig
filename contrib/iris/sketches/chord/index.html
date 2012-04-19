@@ -64,10 +64,23 @@ function pollEvents() {
 // kick off event poller and keep track of interval id so we can pause polling if needed
 //var pollEventsIntervalId = setInterval(pollEvents, 10000);
 
+// storage for job data
+var jobs;
+
 // set up viz params
 var r1 = 600 / 2;
 var r0 = r1 - 120;
 
+function groupStartAngle(d) {
+  return (2 * Math.PI / jobs.length) * d.index;
+}
+
+function groupEndAngle(d) {
+  var r = 2 * Math.PI / jobs.length;
+  return r * (d.index + 1) - r * 0.2;
+}
+
+// define color palette
 var fill = d3.scale.category20c();
 
 // job dependencies are visualized by chords
@@ -79,7 +92,9 @@ var chord = d3.layout.chord()
 // jobs themselves are arc segments around the edge of the chord diagram
 var arc = d3.svg.arc()
   .innerRadius(r0)
-  .outerRadius(r0 + 10);
+  .outerRadius(r0 + 10)
+  .startAngle(groupStartAngle)
+  .endAngle(groupEndAngle);
 
 // set up canvas
 var svg = d3.select("body").append("svg:svg")
@@ -88,20 +103,8 @@ var svg = d3.select("body").append("svg:svg")
   .append("svg:g")
   .attr("transform", "translate(" + r1 + "," + r1 + ")");
 
-// storage for job data
-var jobs, jobDeps, jobAttrs;
-
-d3.json("jobs-deps.json", function(data) {
-  jobDeps = data;
-  initialize();
-});
-
-d3.json("jobs-attrs.json", function(data) {
-  jobAttrs = data;
-  initialize();
-});
-
-d3.json("jobs.json", function(data) {
+// load sample data and initialize
+d3.json("pig-dag.json", function(data) {
   jobs = data;
   initialize();
 });
@@ -110,9 +113,6 @@ d3.json("jobs.json", function(data) {
  * Initialize visualization.
  */
 function initialize() {
-  // return unless all data has been loaded
-  if (jobs == null || jobDeps == null || jobAttrs == null) return;
-
   var indexByName = {},
     nameByIndex = {},
     matrix = [],
@@ -151,8 +151,17 @@ function initialize() {
 
   chord.matrix(matrix);
 
+  // override start and end angles for groups and chords
+  groups = chord.groups()
+
+  for (var i = 0; i < groups.length; i++) {
+    var d = groups[i];
+    d.startAngle = groupStartAngle(d);
+    d.endAngle = groupEndAngle(d);
+  }
+
   var g = svg.selectAll("g.group")
-    .data(chord.groups)
+    .data(groups)
     .enter().append("svg:g")
     .attr("class", "group");
 
@@ -164,14 +173,10 @@ function initialize() {
   g.append("svg:text")
     .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
     .attr("dy", ".35em")
-
-// commenting out the bits which flip labels if angle is > 180 deg
-//    .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
     .attr("text-anchor", function(d) { return null; })
     .attr("transform", function(d) {
       return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
         + "translate(" + (r0 + 26) + ")";
-//        + (d.angle > Math.PI ? "rotate(180)" : "");
     })
     .text(function(d) { return nameByIndex[d.index]; });
 
@@ -181,7 +186,7 @@ function initialize() {
     .attr("class", "chord")
     .style("stroke", function(d) { return d3.rgb(fill(d.source.index)).darker(); })
     .style("fill", function(d) { return fill(d.source.index); })
-    .attr("d", d3.svg.chord().radius(r0));
+    .attr("d", d3.svg.chord().startAngle(groupStartAngle).endAngle(groupEndAngle).radius(r0));
 
 }
 
