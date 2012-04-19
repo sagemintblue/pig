@@ -1,6 +1,6 @@
 // globals
 var backendBaseUrl = "http://localhost:8080";
-var dagLoaded = false;
+var lastProcessedEventId = -1;
 
 // storage for job data and lookup
 var jobs;
@@ -30,7 +30,8 @@ function loadDag() {
     }
     jobs = data;
     initialize();
-    dagLoaded = true;
+    clearTimeout(loadDagIntervalId);
+    startEventPolling();
   });
 }
 
@@ -75,8 +76,7 @@ function handleScriptProgressEvent(event) {
       .text('script progress: ' + event.eventData.scriptProgress + '%');
 };
 
-var lastProcessedEventId = -1;
-/** 
+/**
  * Polls back end for new events.
  */
 function pollEvents() {
@@ -317,17 +317,24 @@ function initialize() {
     .style("stroke", function(d) { return d3.rgb(jobColor(d.source)).darker(); })
     .style("fill", function(d) { return jobColor(d.source); })
     .attr("d", d3.svg.chord().radius(r0));
-
 }
 
 d3.select(self.frameElement).style("height", "600px");
 
+var loadDagIntervalId;
 var pollIntervalId;
 $(document).ready(function() {
-//  while (!dagLoaded)  {
-//    setTimeout('loadDag()', 2000);
-//  }
-  loadDag();
-
-  pollIntervalId = setInterval('pollEvents()', 2000);
+  loadDagTimeoutId = setTimeout('loadDag()', 2000);
 });
+
+
+
+function stopEventPolling() {
+  clearInterval(pollIntervalId);
+  return pollIntervalId;
+}
+
+function startEventPolling() {
+  pollIntervalId = setInterval('pollEvents()', 2000);
+  return pollIntervalId;
+}
