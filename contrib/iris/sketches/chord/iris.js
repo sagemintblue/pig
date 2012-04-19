@@ -6,6 +6,7 @@ var lastProcessedEventId = -1;
 var jobs;
 var jobsByName = {};
 var jobsByJobId = {};
+var scriptProgress = 0;
 
 // currently selected job
 var selectedJob;
@@ -40,41 +41,84 @@ function loadDag() {
 function handleJobStartedEvent(event) {
   d3.select('#updateDialog').text(event.eventData.jobId + ' started');
   var name = event.eventData.name;
-  var j = jobsByName[name];
-  if (j == null) {
+  var job = jobsByName[name];
+  if (job == null) {
     alert("Job with name '" + name + "' not found");
     return;
   }
-  j.jobId = event.eventData.jobId;
-  jobsByJobId[j.jobId] = j;
+  job.jobId = event.eventData.jobId;
+  job.status = "RUNNING";
+  jobsByJobId[job.jobId] = job;
+  updateJobData(event.eventData);
   // TODO update selected job
+  updateJobDialog(job)
 };
 
 function handleJobCompleteEvent(event) {
-  d3.select('#updateDialog').text(event.eventData.jobId + ' complete');
-  var name = event.eventData.name;
-  var j = jobsByName[name];
-  if (j == null) {
-    alert("Job with name '" + name + "' not found");
-    return;
-  }
-  // TODO
+  event.eventData.jobId = event.eventData.jobData.jobId;
+  var job = updateJobData(event.eventData);
+  job.status = "COMPLETE";
+  d3.select('#updateDialog').text(job.jobId + ' complete');
+  updateJobDialog(job)
 };
 
 function handleJobFailedEvent(event) {
-    d3.select('#updateDialog').text(event.eventData.jobId + ' failed');
+  event.eventData.jobId = event.eventData.jobData.jobId;
+  var job = updateJobData(event.eventData);
+  job.status = "FAILED";
+  d3.select('#updateDialog').text(job.jobId + ' failed');
 };
 
 function handleJobProgressEvent(event) {
+  var job = updateJobData(event.eventData);
   d3.select('#updateDialog')
-    .text(event.eventData.jobId + ' map progress: ' + event.eventData.mapProgress * 100 + '%'
-      + ' reduce progress: ' + event.eventData.reduceProgress * 100 + '%');
+    .text(job.jobId + ' map progress: ' + job.mapProgress * 100 + '%'
+      + ' reduce progress: ' + job.reduceProgress * 100 + '%');
+  updateJobDialog(job)
 };
 
 function handleScriptProgressEvent(event) {
   d3.select('#scriptStatusDialog')
       .text('script progress: ' + event.eventData.scriptProgress + '%');
+  scriptProgress = event.eventData.scriptProgress;
 };
+
+// looks up the job from data.jobId and updates all data fields onto job
+function updateJobData(data) {
+  var job = jobsByJobId[data.jobId];
+  if (job == null) {
+    alert("Job with name '" + name + "' not found");
+    return;
+  }
+  $.each(data, function(key, value) {
+    job[key] = value;
+  });
+  return job
+}
+
+function hideJobDialog() {
+  $('.InnerRight').hide();
+}
+
+function updateJobDialog(job) {
+  var props = $('.job-prop-list');
+  $('.job-jt-url', props).text(job.jobId);
+  $('.job-jt-url', props).attr('href', job.trackingUrl);
+  $('.job-alias', props).text(job.aliases);
+  $('.job-feature', props).text(job.features);
+  $('.job-scope', props).text(job.name);
+  $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
+  $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
+  $('.job-status', props).text(job.status);
+  $('.InnerRight').show();
+}
+
+function buildTaskString(total, progress) {
+  if (total == null || progress == null) {
+    return ''
+  }
+  return total + ' (' + progress*100 + '%)'
+}
 
 /**
  * Polls back end for new events.
@@ -101,7 +145,7 @@ function pollEvents() {
             handleJobProgressEvent(event);
             lastProcessedEventId = eventId;
             eventsHandledCount++;
-        } else if(eventType == "JOB_COMPLETE") {
+        } else if(eventType == "JOB_FINISHED") {
             handleJobCompleteEvent(event);
             lastProcessedEventId = eventId;
             eventsHandledCount++;
@@ -324,6 +368,7 @@ d3.select(self.frameElement).style("height", "600px");
 var loadDagIntervalId;
 var pollIntervalId;
 $(document).ready(function() {
+  hideJobDialog();
   loadDagTimeoutId = setTimeout('loadDag()', 2000);
 });
 
