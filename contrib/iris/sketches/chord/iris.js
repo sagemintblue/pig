@@ -2,6 +2,16 @@
 var backendBaseUrl = "http://localhost:8080";
 var lastProcessedEventId = -1;
 
+// storage for job data and lookup
+var jobs;
+var jobsByName = {};
+var jobsByJobId = {};
+
+// currently selected job
+var selectedJob;
+var selectedJobLastUpdate;
+var selectedColor = "#00FF00";
+
 /**
  * Displays an error message.
  */
@@ -14,7 +24,7 @@ function displayError(msg) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("jobs.json", function(data) {
+  d3.json("pig-dag.json", function(data) {
     if (data == null) {
       return
     }
@@ -28,19 +38,39 @@ function loadDag() {
 
 // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
 function handleJobStartedEvent(event) {
-    d3.select('#updateDialog').text(event.eventData.jobId + ' started');
+  d3.select('#updateDialog').text(event.eventData.jobId + ' started');
+  var name = event.eventData.name;
+  var j = jobsByName[name];
+  if (j == null) {
+    alert("Job with name '" + name + "' not found");
+    return;
+  }
+  j.jobId = event.eventData.jobId;
+  jobsByJobId[j.jobId] = j;
+  // TODO update selected job
 };
+
 function handleJobCompleteEvent(event) {
-    d3.select('#updateDialog').text(event.eventData.jobId + ' complete');
+  d3.select('#updateDialog').text(event.eventData.jobId + ' complete');
+  var name = event.eventData.name;
+  var j = jobsByName[name];
+  if (j == null) {
+    alert("Job with name '" + name + "' not found");
+    return;
+  }
+  // TODO
 };
+
 function handleJobFailedEvent(event) {
     d3.select('#updateDialog').text(event.eventData.jobId + ' failed');
 };
+
 function handleJobProgressEvent(event) {
   d3.select('#updateDialog')
     .text(event.eventData.jobId + ' map progress: ' + event.eventData.mapProgress * 100 + '%'
       + ' reduce progress: ' + event.eventData.reduceProgress * 100 + '%');
 };
+
 function handleScriptProgressEvent(event) {
   d3.select('#scriptStatusDialog')
       .text('script progress: ' + event.eventData.scriptProgress + '%');
@@ -91,12 +121,11 @@ function pollEvents() {
 // kick off event poller and keep track of interval id so we can pause polling if needed
 //var pollEventsIntervalId = setInterval(pollEvents, 10000);
 
-// storage for job data
-var jobs;
-
-// currently selected job
-var selectedJob;
-var selectedColor = "#00FF00";
+// helper function for selecting a job
+function selectJob(j) {
+  selectedJob = j;
+  selectedJobLastUdpate = new Date().getTime();
+}
 
 // group angle initialized once we know the number of jobs
 var ga = 0;
@@ -152,17 +181,16 @@ function initialize() {
   selectedJob = jobs[0];
 
   // storage for various maps
-  var jobByName = {},
-    indexByName = {},
+  var indexByName = {},
     nameByIndex = {},
     matrix = [],
     n = 0;
 
   // Compute a unique index for each job name
   jobs.forEach(function(j) {
+    jobsByName[j.name] = j;
     if (!(j.name in indexByName)) {
       nameByIndex[n] = j.name;
-      jobByName[j.name] = j;
       indexByName[j.name] = n++;
     }
   });
@@ -188,7 +216,7 @@ function initialize() {
 
       // initialize predecessor and successor indices
       j.successorIndices[s] = d3.keys(j.successorIndices).length;
-      var sj = jobByName[n];
+      var sj = jobsByName[n];
       sj.predecessorIndices[p] = d3.keys(sj.predecessorIndices).length;
     });
   });
@@ -233,8 +261,8 @@ function initialize() {
     var t = d.target;
 
     // associate jobs with chord source and target objects
-    var sj = jobByName[nameByIndex[s.index]];
-    var tj = jobByName[nameByIndex[t.index]];
+    var sj = jobsByName[nameByIndex[s.index]];
+    var tj = jobsByName[nameByIndex[t.index]];
     s.job = sj;
     t.job = tj;
 
