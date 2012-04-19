@@ -345,14 +345,19 @@ function initialize() {
     .attr("d", d3.svg.chord().radius(r0));
 }
 
+/**
+ * Refreshes the visual elements based on current (updated) state.
+ */
 function refreshDisplay() {
   // update path.arc elements
   svg.selectAll("path.arc")
+    .transition()
     .style("fill", jobColor)
     .style("stroke", jobColor);
 
   // update path.chord elements
   svg.selectAll("path.chord")
+    .transition()
     .style("stroke", chordStroke)
     .style("fill", chordFill);
 }
