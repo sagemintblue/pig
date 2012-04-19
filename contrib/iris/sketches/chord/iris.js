@@ -83,7 +83,7 @@ function handleJobStartedEvent(event) {
   updateJobData(event.eventData);
   selectJob(job);
   refreshDisplay();
-};
+}
 
 function handleJobCompleteEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
@@ -94,33 +94,33 @@ function handleJobCompleteEvent(event) {
   // TODO
   job = jobsByName[job.name];
   var i = job.index + 1;
-
+  if (i >= jobs.length) {
     // jump to first job if we've reached the end
     i = 0;
   }
   selectJob(jobs[i]);
   refreshDisplay();
-};
+}
 
 function handleJobFailedEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
   job.status = "FAILED";
   d3.select('#updateDialog').text(job.jobId + ' failed');
-};
+}
 
 function handleJobProgressEvent(event) {
   var job = updateJobData(event.eventData);
   d3.select('#updateDialog')
     .text(job.jobId + ' map progress: ' + job.mapProgress * 100 + '%'
       + ' reduce progress: ' + job.reduceProgress * 100 + '%');
-};
+}
 
 function handleScriptProgressEvent(event) {
   d3.select('#scriptStatusDialog')
       .text('script progress: ' + event.eventData.scriptProgress + '%');
   scriptProgress = event.eventData.scriptProgress;
-};
+}
 
 // looks up the job from data.jobId and updates all data fields onto job
 function updateJobData(data) {
