@@ -24,7 +24,7 @@ function displayError(msg) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("jobs.json", function(data) {
+  d3.json("pig-dag.json", function(data) {
     if (data == null || dagLoaded) {
       return
     }
@@ -38,24 +38,38 @@ function loadDag() {
 // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
 function handleJobStartedEvent(event) {
   d3.select('#updateDialog').text(event.eventData.jobId + ' started');
-  var j = jobsByName[event.eventData.name];
+  var name = event.eventData.name;
+  var j = jobsByName[name];
+  if (j == null) {
+    alert("Job with name '" + name + "' not found");
+    return;
+  }
   j.jobId = event.eventData.jobId;
   jobsByJobId[j.jobId] = j;
   // TODO update selected job
 };
+
 function handleJobCompleteEvent(event) {
   d3.select('#updateDialog').text(event.eventData.jobId + ' complete');
-  var j = jobsByJobId[event.eventData.jobId];
+  var name = event.eventData.name;
+  var j = jobsByName[name];
+  if (j == null) {
+    alert("Job with name '" + name + "' not found");
+    return;
+  }
   // TODO
 };
+
 function handleJobFailedEvent(event) {
     d3.select('#updateDialog').text(event.eventData.jobId + ' failed');
 };
+
 function handleJobProgressEvent(event) {
   d3.select('#updateDialog')
     .text(event.eventData.jobId + ' map progress: ' + event.eventData.mapProgress * 100 + '%'
       + ' reduce progress: ' + event.eventData.reduceProgress * 100 + '%');
 };
+
 function handleScriptProgressEvent(event) {
   d3.select('#scriptStatusDialog')
       .text('script progress: ' + event.eventData.scriptProgress + '%');
