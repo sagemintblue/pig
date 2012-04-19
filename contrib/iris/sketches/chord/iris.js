@@ -261,7 +261,7 @@ var svg = d3.select("#chart")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")
-  .attr("transform", "translate(" + r1 + "," + r1 + ")");
+  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(0)");
 
 /**
  * Initialize visualization.
@@ -281,7 +281,7 @@ function initialize() {
     jobsByName[j.name] = j;
     if (!(j.name in indexByName)) {
       nameByIndex[n] = j.name;
-      indexByName[j.name] = n++;
+      indexByName[j.name] = j.index = n++;
     }
   });
 
@@ -405,6 +405,10 @@ function refreshDisplay() {
     .transition()
     .style("stroke", chordStroke)
     .style("fill", chordFill);
+
+  // spin svg to selected job
+  svg.transition()
+    .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(" + ((-ga * selectedJob.index) * 180 / Math.PI) + ")");
 }
 
 d3.select(self.frameElement).style("height", "600px");
@@ -423,6 +427,6 @@ function stopEventPolling() {
 }
 
 function startEventPolling() {
-  pollIntervalId = setInterval('pollEvents()', 500);
+  pollIntervalId = setInterval('pollEvents()', 2000);
   return pollIntervalId;
 }
