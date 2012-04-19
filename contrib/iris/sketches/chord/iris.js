@@ -2,6 +2,16 @@
 var backendBaseUrl = "http://localhost:8080";
 var lastEventId = 0;
 
+// storage for job data and lookup
+var jobs;
+var jobsByName = {};
+var jobsByJobId = {};
+
+// currently selected job
+var selectedJob;
+var selectedJobLastUpdate;
+var selectedColor = "#00FF00";
+
 /**
  * Displays an error message.
  */
@@ -28,9 +38,15 @@ function getScopeGraph() {
 // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
 function handleJobStartedEvent(event) {
   alert("Job started: " + event.eventData.jobId);
+  var j = jobsByName[event.eventData.name];
+  j.jobId = event.eventData.jobId;
+  jobsByJobId[j.jobId] = j;
+  // TODO update selected job
 };
 function handleJobCompleteEvent(event) {
   alert("Job complete: " + event.eventData.jobId);
+  var j = jobsByJobId[event.eventData.jobId];
+  // TODO
 };
 function handleJobFailedEvent(event) {
   alert("Job failed: " + event.eventData.jobId);
@@ -92,12 +108,11 @@ function pollEvents() {
 // kick off event poller and keep track of interval id so we can pause polling if needed
 //var pollEventsIntervalId = setInterval(pollEvents, 10000);
 
-// storage for job data
-var jobs;
-
-// currently selected job
-var selectedJob;
-var selectedColor = "#00FF00";
+// helper function for selecting a job
+function selectJob(j) {
+  selectedJob = j;
+  selectedJobLastUdpate = new Date().getTime();
+}
 
 // group angle initialized once we know the number of jobs
 var ga = 0;
@@ -141,7 +156,7 @@ var svg = d3.select("#chart")
   .attr("transform", "translate(" + r1 + "," + r1 + ")");
 
 // load sample data and initialize
-d3.json("jobs.json", function(data) {
+d3.json("pig-dag.json", function(data) {
   if (data == null) {
     displayError("Failed to load jobs data");
     return;
@@ -163,17 +178,16 @@ function initialize() {
   selectedJob = jobs[0];
 
   // storage for various maps
-  var jobByName = {},
-    indexByName = {},
+  var indexByName = {},
     nameByIndex = {},
     matrix = [],
     n = 0;
 
   // Compute a unique index for each job name
   jobs.forEach(function(j) {
+    jobsByName[j.name] = j;
     if (!(j.name in indexByName)) {
       nameByIndex[n] = j.name;
-      jobByName[j.name] = j;
       indexByName[j.name] = n++;
     }
   });
@@ -199,7 +213,7 @@ function initialize() {
 
       // initialize predecessor and successor indices
       j.successorIndices[s] = d3.keys(j.successorIndices).length;
-      var sj = jobByName[n];
+      var sj = jobsByName[n];
       sj.predecessorIndices[p] = d3.keys(sj.predecessorIndices).length;
     });
   });
@@ -244,8 +258,8 @@ function initialize() {
     var t = d.target;
 
     // associate jobs with chord source and target objects
-    var sj = jobByName[nameByIndex[s.index]];
-    var tj = jobByName[nameByIndex[t.index]];
+    var sj = jobsByName[nameByIndex[s.index]];
+    var tj = jobsByName[nameByIndex[t.index]];
     s.job = sj;
     t.job = tj;
 
