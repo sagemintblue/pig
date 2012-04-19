@@ -1,6 +1,6 @@
 // globals
 var backendBaseUrl = "http://localhost:8080";
-var lastEventId = 0
+var lastEventId = 0;
 
 /**
  * Displays an error message.
@@ -16,8 +16,8 @@ function getScopeGraph() {
   d3.json(backendBaseUrl + "/dag", function(d) {
     // test for error
     if (d == null) {
-      displayError("Failed to retrieve scope graph")
-      return
+      displayError("Failed to retrieve scope graph");
+      return;
     }
 
     // TODO(Andy Schlaikjer): Replace existing scope graph data with new data and update viz
@@ -31,8 +31,8 @@ function pollEvents() {
   d3.json(backendBaseUrl + "/events", function(d) {
     // test for error
     if (d == null) {
-      displayError("Failed to poll events")
-      return
+      displayError("Failed to poll events");
+      return;
     }
 
     // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
@@ -45,7 +45,12 @@ function pollEvents() {
 // storage for job data
 var jobs;
 
-// set up viz params
+// group angle initialized once we know the number of jobs
+var ga = 0;
+var ga2 = 0;
+var gap = 0;
+
+// radii of svg figure
 var r1 = 600 / 2;
 var r0 = r1 - 120;
 
@@ -53,18 +58,16 @@ var r0 = r1 - 120;
 var fill = d3.scale.category20b();
 
 // job dependencies are visualized by chords
-var chord = d3.layout.chord()
-  .padding(0.04)
-  .sortSubgroups(d3.descending)
-  .sortChords(d3.descending);
+var chord = d3.layout.chord();
 
+// returns start angle for a chord group
 function groupStartAngle(d) {
-  return (2 * Math.PI / jobs.length) * d.index;
+  return  ga * d.index + gap + Math.PI / 2 - ga2;
 }
 
+// returns end angle for a chord group
 function groupEndAngle(d) {
-  var r = 2 * Math.PI / jobs.length;
-  return r * (d.index + 1) - r * 0.1;
+  return groupStartAngle(d) + ga - gap;
 }
 
 // jobs themselves are arc segments around the edge of the chord diagram
@@ -75,14 +78,20 @@ var arc = d3.svg.arc()
   .endAngle(groupEndAngle);
 
 // set up canvas
-var svg = d3.select("body").append("svg:svg")
+var svg = d3.select("body")
+  .append("svg:svg")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")
+  .attr("class", "iris_transform")
   .attr("transform", "translate(" + r1 + "," + r1 + ")");
 
 // load sample data and initialize
 d3.json("jobs.json", function(data) {
+  if (data == null) {
+    displayError("Failed to load jobs data");
+    return;
+  }
   jobs = data;
   initialize();
 });
@@ -91,6 +100,12 @@ d3.json("jobs.json", function(data) {
  * Initialize visualization.
  */
 function initialize() {
+  // initialize group angle
+  ga = 2 * Math.PI / jobs.length;
+  ga2 = ga / 2;
+  gap = ga2 * 0.2;
+
+  // storage for various maps
   var jobByName = {},
     indexByName = {},
     nameByIndex = {},
