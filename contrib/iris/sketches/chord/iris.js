@@ -7,17 +7,47 @@ var jobs;
 var jobsByName = {};
 var jobsByJobId = {};
 var scriptProgress = 0;
+var indexByName = {};
+var nameByIndex = {};
+var matrix = [];
 
 // currently selected job
 var selectedJob;
 var selectedJobLastUpdate;
 var selectedColor = "#00FF00";
 
+function updateJobDialog(job) {
+  var props = $('.job-prop-list');
+  $('.job-jt-url', props).text(job.jobId);
+  $('.job-jt-url', props).attr('href', job.trackingUrl);
+  $('.job-alias', props).text(job.aliases);
+  $('.job-feature', props).text(job.features);
+  $('.job-scope', props).text(job.name);
+  $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
+  $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
+  $('.job-status', props).text(job.status);
+  $('.InnerRight').show();
+}
+
+/**
+ * Select the given job and update global state.
+ */
+function selectJob(job) {
+  selectedJob = job;
+  selectedJobLastUdpate = new Date().getTime();
+  updateJobDialog(job);
+}
+
+function isSelected(j) {
+  return j === selectedJob;
+}
+
 /**
  * Displays an error message.
  */
 function displayError(msg) {
   // TODO(Andy Schlaikjer): Display error, pause event polling
+  alert(msg);
 }
 
 /**
@@ -27,7 +57,8 @@ function loadDag() {
   // load sample data and initialize
   d3.json("pig-dag.json", function(data) {
     if (data == null) {
-      return
+      alert("Failed to load sample data");
+      return;
     }
     jobs = data;
     initialize();
@@ -50,8 +81,8 @@ function handleJobStartedEvent(event) {
   job.status = "RUNNING";
   jobsByJobId[job.jobId] = job;
   updateJobData(event.eventData);
-  // TODO update selected job
-  updateJobDialog(job)
+  selectJob(job);
+  refreshDisplay();
 };
 
 function handleJobCompleteEvent(event) {
@@ -59,7 +90,16 @@ function handleJobCompleteEvent(event) {
   var job = updateJobData(event.eventData);
   job.status = "COMPLETE";
   d3.select('#updateDialog').text(job.jobId + ' complete');
-  updateJobDialog(job)
+
+  // TODO
+  job = jobsByName[job.name];
+  var i = job.index + 1;
+
+    // jump to first job if we've reached the end
+    i = 0;
+  }
+  selectJob(jobs[i]);
+  refreshDisplay();
 };
 
 function handleJobFailedEvent(event) {
@@ -74,7 +114,6 @@ function handleJobProgressEvent(event) {
   d3.select('#updateDialog')
     .text(job.jobId + ' map progress: ' + job.mapProgress * 100 + '%'
       + ' reduce progress: ' + job.reduceProgress * 100 + '%');
-  updateJobDialog(job)
 };
 
 function handleScriptProgressEvent(event) {
@@ -98,19 +137,6 @@ function updateJobData(data) {
 
 function hideJobDialog() {
   $('.InnerRight').hide();
-}
-
-function updateJobDialog(job) {
-  var props = $('.job-prop-list');
-  $('.job-jt-url', props).text(job.jobId);
-  $('.job-jt-url', props).attr('href', job.trackingUrl);
-  $('.job-alias', props).text(job.aliases);
-  $('.job-feature', props).text(job.features);
-  $('.job-scope', props).text(job.name);
-  $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
-  $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
-  $('.job-status', props).text(job.status);
-  $('.InnerRight').show();
 }
 
 function buildTaskString(total, progress) {
@@ -165,12 +191,6 @@ function pollEvents() {
 // kick off event poller and keep track of interval id so we can pause polling if needed
 //var pollEventsIntervalId = setInterval(pollEvents, 10000);
 
-// helper function for selecting a job
-function selectJob(j) {
-  selectedJob = j;
-  selectedJobLastUdpate = new Date().getTime();
-}
-
 // group angle initialized once we know the number of jobs
 var ga = 0;
 var ga2 = 0;
@@ -185,6 +205,8 @@ var fill = d3.scale.category20b();
 
 // job dependencies are visualized by chords
 var chord = d3.layout.chord();
+var groups;
+var chords;
 
 // returns start angle for a chord group
 function groupStartAngle(d) {
@@ -195,6 +217,36 @@ function groupStartAngle(d) {
 function groupEndAngle(d) {
   return groupStartAngle(d) + ga - gap;
 }
+
+/**
+ * @param d chord data
+ * @param f boolean flag indicating chord is out-link
+ * @param i chord in- / out-link index within current group
+ * @param n in- / out-degree of current group
+ */
+function chordAngle(d, f, i, n) {
+  var g = groups[d.index];
+  var s = g.startAngle;
+  var e = g.endAngle;
+  var r = (e - s) / 2;
+  var ri = r / n;
+  return s + r * (f ? 0 : 1) + ri * i;
+}
+
+// returns color for job arc and chord
+function jobColor(d) {
+  var c = fill(d.index);
+  if (isSelected(d.job)) {
+    c = d3.rgb(selectedColor);
+  } else {
+    c = d3.interpolateRgb(c, "white")(1/2);
+  }
+  return c;
+}
+
+// more color funcs
+function chordStroke(d) { return d3.rgb(jobColor(d.source)).darker(); }
+function chordFill(d) { return jobColor(d.source); }
 
 // jobs themselves are arc segments around the edge of the chord diagram
 var arc = d3.svg.arc()
@@ -209,7 +261,6 @@ var svg = d3.select("#chart")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")
-  .attr("class", "iris_transform")
   .attr("transform", "translate(" + r1 + "," + r1 + ")");
 
 /**
@@ -222,15 +273,10 @@ function initialize() {
   gap = ga2 * 0.2;
 
   // update state
-  selectedJob = jobs[0];
-
-  // storage for various maps
-  var indexByName = {},
-    nameByIndex = {},
-    matrix = [],
-    n = 0;
+  selectJob(jobs[0]);
 
   // Compute a unique index for each job name
+  var n = 0;
   jobs.forEach(function(j) {
     jobsByName[j.name] = j;
     if (!(j.name in indexByName)) {
@@ -283,21 +329,6 @@ function initialize() {
     d.endAngle = groupEndAngle(d);
   }
 
-  /**
-   * @param d chord data
-   * @param f boolean flag indicating chord is out-link
-   * @param i chord in- / out-link index within current group
-   * @param n in- / out-degree of current group
-   */
-  function chordAngle(d, f, i, n) {
-    var g = groups[d.index];
-    var s = g.startAngle;
-    var e = g.endAngle;
-    var r = (e - s) / 2;
-    var ri = r / n;
-    return s + r * (f ? 0 : 1) + ri * i;
-  }
-
   // initialize begin / end angles for chord source / target
   for (var i = 0; i < chords.length; i++) {
     var d = chords[i];
@@ -323,56 +354,68 @@ function initialize() {
     t.endAngle = chordAngle(t, false, ti + 1, tn);
   }
 
+  // select an svg g element for each group
   var g = svg.selectAll("g.group")
     .data(groups)
-    .enter().append("svg:g")
+    .enter()
+    .append("svg:g")
     .attr("class", "group");
 
-  // returns color for job arc and chord
-  function jobColor(d) {
-    var c = fill(d.index);
-    if (selectedJob != null && d.job == selectedJob) {
-      c = d3.rgb(selectedColor);
-    } else {
-      c = d3.interpolateRgb(c, "white")(1/2);
-    }
-    return c;
-  }
-
+  // add an arc to each g.group
   g.append("svg:path")
+    .attr("class", "arc")
     .style("fill", jobColor)
     .style("stroke", jobColor)
     .attr("d", arc);
 
+  // add a label to each g.group
   g.append("svg:text")
     .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
     .attr("dy", ".35em")
-    .attr("text-anchor", function(d) { return null; })
+    .attr("text-anchor", null)
     .attr("transform", function(d) {
       return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
         + "translate(" + (r0 + 26) + ")";
     })
     .text(function(d) { return nameByIndex[d.index]; });
 
+  // add chords
   svg.selectAll("path.chord")
     .data(chords)
-    .enter().append("svg:path")
+    .enter()
+    .append("svg:path")
     .attr("class", "chord")
-    .style("stroke", function(d) { return d3.rgb(jobColor(d.source)).darker(); })
-    .style("fill", function(d) { return jobColor(d.source); })
+    .style("stroke", chordStroke)
+    .style("fill", chordFill)
     .attr("d", d3.svg.chord().radius(r0));
+}
+
+/**
+ * Refreshes the visual elements based on current (updated) state.
+ */
+function refreshDisplay() {
+  // update path.arc elements
+  svg.selectAll("path.arc")
+    .transition()
+    .style("fill", jobColor)
+    .style("stroke", jobColor);
+
+  // update path.chord elements
+  svg.selectAll("path.chord")
+    .transition()
+    .style("stroke", chordStroke)
+    .style("fill", chordFill);
 }
 
 d3.select(self.frameElement).style("height", "600px");
 
 var loadDagIntervalId;
 var pollIntervalId;
+
 $(document).ready(function() {
   hideJobDialog();
-  loadDagTimeoutId = setTimeout('loadDag()', 2000);
+  loadDagTimeoutId = setTimeout('loadDag()', 500);
 });
-
-
 
 function stopEventPolling() {
   clearInterval(pollIntervalId);
@@ -380,6 +423,6 @@ function stopEventPolling() {
 }
 
 function startEventPolling() {
-  pollIntervalId = setInterval('pollEvents()', 2000);
+  pollIntervalId = setInterval('pollEvents()', 500);
   return pollIntervalId;
 }

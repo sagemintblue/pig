@@ -2,6 +2,9 @@ body {
   font: 10px sans-serif;
 }
 
+path.arc {
+}
+
 path.chord {
   fill-opacity: .67;
 }
