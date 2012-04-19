@@ -25,7 +25,7 @@ function displayError(msg) {
 function loadDag() {
   // load sample data and initialize
   d3.json("pig-dag.json", function(data) {
-    if (data == null || dagLoaded) {
+    if (data == null) {
       return
     }
     jobs = data;
