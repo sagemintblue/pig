@@ -43,7 +43,7 @@ function handleScriptProgressEvent(event) {
       .append("svg:text")
       .text('script progress: ' + event.eventData.scriptProgress + '%');
   //$('scriptDialog').innerHTML = 'script progress: ' + event.eventData.scriptProgress + '%';
-   alert("Script progress: " + event.eventData.scriptProgress);
+  alert("Script progress: " + event.eventData.scriptProgress);
 };
 
 var lastProcessedEventId = -1;
@@ -94,6 +94,10 @@ function pollEvents() {
 
 // storage for job data
 var jobs;
+
+// currently selected job
+var selectedJob;
+var selectedColor = "#00FF00";
 
 // group angle initialized once we know the number of jobs
 var ga = 0;
@@ -155,6 +159,9 @@ function initialize() {
   ga2 = ga / 2;
   gap = ga2 * 0.2;
 
+  // update state
+  selectedJob = jobs[0];
+
   // storage for various maps
   var jobByName = {},
     indexByName = {},
@@ -203,12 +210,24 @@ function initialize() {
   groups = chord.groups();
   chords = chord.chords();
 
+  // initialize groups
   for (var i = 0; i < groups.length; i++) {
     var d = groups[i];
+    
+    // associate group with job
+    d.job = jobs[i];
+
+    // angles
     d.startAngle = groupStartAngle(d);
     d.endAngle = groupEndAngle(d);
   }
 
+  /**
+   * @param d chord data
+   * @param f boolean flag indicating chord is out-link
+   * @param i chord in- / out-link index within current group
+   * @param n in- / out-degree of current group
+   */
   function chordAngle(d, f, i, n) {
     var g = groups[d.index];
     var s = g.startAngle;
@@ -218,14 +237,23 @@ function initialize() {
     return s + r * (f ? 0 : 1) + ri * i;
   }
 
+  // initialize begin / end angles for chord source / target
   for (var i = 0; i < chords.length; i++) {
     var d = chords[i];
     var s = d.source;
     var t = d.target;
+
+    // associate jobs with chord source and target objects
     var sj = jobByName[nameByIndex[s.index]];
     var tj = jobByName[nameByIndex[t.index]];
+    s.job = sj;
+    t.job = tj;
+
+    // determine chord source and target indices
     var si = sj.predecessorIndices[t.index];
     var ti = tj.successorIndices[s.index];
+
+    // determine chord source out-degree and target in-degree
     var sn = d3.keys(sj.predecessorIndices).length;
     var tn = d3.keys(tj.successorIndices).length;
     s.startAngle = chordAngle(s, true, si, sn);
@@ -239,9 +267,20 @@ function initialize() {
     .enter().append("svg:g")
     .attr("class", "group");
 
+  // returns color for job arc and chord
+  function jobColor(d) {
+    var c = fill(d.index);
+    if (selectedJob != null && d.job == selectedJob) {
+      c = d3.rgb(selectedColor);
+    } else {
+      c = d3.interpolateRgb(c, "white")(1/2);
+    }
+    return c;
+  }
+
   g.append("svg:path")
-    .style("fill", function(d) { return fill(d.index); })
-    .style("stroke", function(d) { return fill(d.index); })
+    .style("fill", jobColor)
+    .style("stroke", jobColor)
     .attr("d", arc);
 
   g.append("svg:text")
@@ -258,8 +297,8 @@ function initialize() {
     .data(chords)
     .enter().append("svg:path")
     .attr("class", "chord")
-    .style("stroke", function(d) { return d3.rgb(fill(d.source.index)).darker(); })
-    .style("fill", function(d) { return fill(d.source.index); })
+    .style("stroke", function(d) { return d3.rgb(jobColor(d.source)).darker(); })
+    .style("fill", function(d) { return jobColor(d.source); })
     .attr("d", d3.svg.chord().radius(r0));
 
 }
