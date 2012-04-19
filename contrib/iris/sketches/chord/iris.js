@@ -75,7 +75,7 @@ var arc = d3.svg.arc()
   .endAngle(groupEndAngle);
 
 // set up canvas
-var svg = d3.select("body").append("svg:svg")
+var svg = d3.select("#chart").append("svg:svg")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")

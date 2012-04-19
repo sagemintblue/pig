@@ -5,3 +5,48 @@ body {
 path.chord {
   fill-opacity: .67;
 }
+
+div.Outer {
+  #border:dashed 1px black;
+  width: 100%;
+  height: 600px;
+  position: relative;
+  clear: both;
+}
+div.InnerLeft {
+  #border:dashed 1px green;
+  width: 580px;
+  height: 100%;
+  position: relative;
+  #background: #CCCCCC;
+  float: left;
+}
+div.InnerRight {
+  width: auto;
+  height: auto;
+  border:solid 3px #add8e6;
+  position:relative; top:50%; margin-top:-4em; padding: 10px;
+  background: #f5f5f5;
+  float: left;
+  border-radius: 7px;
+}
+
+dl.job-prop-list {
+  margin: 0;
+  padding: 0;
+}
+
+.job-prop-list dt {
+  clear: left;
+  float: left;
+  margin: 0;
+  padding: 0;
+  font-weight: bold;
+  width: 50px;
+}
+
+.job-prop-list dd {
+  margin: 0 0 1px 0;
+  padding: 0;
+  float: left;
+}
