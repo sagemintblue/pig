@@ -13,13 +13,15 @@ div.Outer {
   position: relative;
   clear: both;
 }
-div.Header {
+div.Top {
   #border:dashed 1px green;
+  #background: #CCCCCC;
   width: 100%;
-  height: 40px;
+  height: 20px;
   position: relative;
-  background: #CCCCCC;
   float: left;
+  text-align: center;
+  font-size: 15px;
 }
 div.InnerLeft {
   #border:dashed 1px green;

@@ -1,6 +1,6 @@
 // globals
 var backendBaseUrl = "http://localhost:8080";
-var lastEventId = 0
+var dagLoaded = false;
 
 /**
  * Displays an error message.
@@ -12,38 +12,37 @@ function displayError(msg) {
 /**
  * Retrieves snapshot of current DAG of scopes from back end.
  */
-function getScopeGraph() {
-  d3.json(backendBaseUrl + "/dag", function(d) {
-    // test for error
-    if (d == null) {
-      displayError("Failed to retrieve scope graph")
+function loadDag() {
+  // load sample data and initialize
+  d3.json("jobs.json", function(data) {
+    if (data == null || dagLoaded) {
       return
     }
-
-    // TODO(Andy Schlaikjer): Replace existing scope graph data with new data and update viz
+    jobs = data;
+    initialize();
+    dagLoaded = true;
   });
 }
 
 
 // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
 function handleJobStartedEvent(event) {
-  alert("Job started: " + event.eventData.jobId);
+    d3.select('#updateDialog').text(event.eventData.jobId + ' started');
 };
 function handleJobCompleteEvent(event) {
-  alert("Job complete: " + event.eventData.jobId);
+    d3.select('#updateDialog').text(event.eventData.jobId + ' complete');
 };
 function handleJobFailedEvent(event) {
-  alert("Job failed: " + event.eventData.jobId);
+    d3.select('#updateDialog').text(event.eventData.jobId + ' failed');
 };
 function handleJobProgressEvent(event) {
-  alert("Job progress: " + event.eventData.jobId);
+  d3.select('#updateDialog')
+    .text(event.eventData.jobId + ' map progress: ' + event.eventData.mapProgress + '%'
+      + ' reduce progress: ' + event.eventData.reduceProgress * 100 + '%');
 };
 function handleScriptProgressEvent(event) {
-  d3.select('#scriptDialog')
-      .append("svg:text")
-      .text('script progress: ' + event.eventData.scriptProgress + '%');
-  //$('scriptDialog').innerHTML = 'script progress: ' + event.eventData.scriptProgress + '%';
-   alert("Script progress: " + event.eventData.scriptProgress);
+  d3.select('#scriptStatusDialog')
+      .text('script progress: ' + event.eventData.scriptProgress * 100 + '%');
 };
 
 var lastProcessedEventId = -1;
@@ -130,12 +129,6 @@ var svg = d3.select("#chart").append("svg:svg")
   .attr("height", r1 * 2)
   .append("svg:g")
   .attr("transform", "translate(" + r1 + "," + r1 + ")");
-
-// load sample data and initialize
-d3.json("jobs.json", function(data) {
-  jobs = data;
-  initialize();
-});
 
 /**
  * Initialize visualization.
@@ -250,3 +243,13 @@ function initialize() {
 }
 
 d3.select(self.frameElement).style("height", "600px");
+
+var pollIntervalId;
+$(document).ready(function() {
+//  while (!dagLoaded)  {
+//    setTimeout('loadDag()', 2000);
+//  }
+  loadDag();
+
+  pollIntervalId = setInterval('pollEvents()', 2000);
+});
