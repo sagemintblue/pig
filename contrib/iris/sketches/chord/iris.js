@@ -24,18 +24,68 @@ function getScopeGraph() {
   });
 }
 
+
+// TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
+function handleJobStartedEvent(event) {
+  alert("Job started: " + event.eventData.jobId);
+};
+function handleJobCompleteEvent(event) {
+  alert("Job complete: " + event.eventData.jobId);
+};
+function handleJobFailedEvent(event) {
+  alert("Job failed: " + event.eventData.jobId);
+};
+function handleJobProgressEvent(event) {
+  alert("Job progress: " + event.eventData.jobId);
+};
+function handleScriptProgressEvent(event) {
+  d3.select('#scriptDialog')
+      .append("svg:text")
+      .text('script progress: ' + event.eventData.scriptProgress + '%');
+  //$('scriptDialog').innerHTML = 'script progress: ' + event.eventData.scriptProgress + '%';
+   alert("Script progress: " + event.eventData.scriptProgress);
+};
+
+var lastProcessedEventId = -1;
 /** 
  * Polls back end for new events.
  */
 function pollEvents() {
-  d3.json(backendBaseUrl + "/events", function(d) {
+  d3.json("pig-events.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
-    if (d == null) {
-      displayError("Failed to poll events")
+    if (events == null) {
+      displayError("No events found")
       return
     }
-
-    // TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
+    var eventsHandledCount = 0;
+    events.forEach(function(event) {
+        var eventId = event.eventId;
+        if (eventId <= lastProcessedEventId || eventsHandledCount > 0) {
+            return;
+        }
+        var eventType = event.eventType;
+        if(eventType == "JOB_STARTED") {
+            handleJobStartedEvent(event);
+            lastProcessedEventId = eventId;
+            eventsHandledCount++;
+        } else if(eventType == "JOB_PROGRESS") {
+            handleJobProgressEvent(event);
+            lastProcessedEventId = eventId;
+            eventsHandledCount++;
+        } else if(eventType == "JOB_COMPLETE") {
+            handleJobCompleteEvent(event);
+            lastProcessedEventId = eventId;
+            eventsHandledCount++;
+        } else if(eventType == "JOB_FAILED") {
+            handleJobFailedEvent(event);
+            lastProcessedEventId = eventId;
+            eventsHandledCount++;
+        } else if(eventType == "SCRIPT_PROGRESS") {
+            handleScriptProgressEvent(event);
+            lastProcessedEventId = eventId;
+            eventsHandledCount++;
+        }
+    });
   });
 }
 

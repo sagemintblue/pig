@@ -8,10 +8,18 @@ path.chord {
 
 div.Outer {
   #border:dashed 1px black;
-  width: 100%;
+  width: 800px;
   height: 600px;
   position: relative;
   clear: both;
+}
+div.Header {
+  #border:dashed 1px green;
+  width: 100%;
+  height: 40px;
+  position: relative;
+  background: #CCCCCC;
+  float: left;
 }
 div.InnerLeft {
   #border:dashed 1px green;
