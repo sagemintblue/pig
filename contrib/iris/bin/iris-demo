@@ -1,0 +1,12 @@
+#!/bin/bash
+
+WEBROOT="$(dirname $0)/../client"
+PORT="${1:-8888}"
+
+cd "$WEBROOT"
+
+echo "Starting web server on port $PORT" >&2
+
+# To instead see a larger job, pass localdata=large below
+open "http://localhost:$PORT/index.html?localdata=small"
+exec python -m SimpleHTTPServer "$PORT"

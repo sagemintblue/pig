@@ -71,6 +71,13 @@ function handleArcClick(d, i) {
 function error(msg) { d3.select('#scriptStatusDialog').text(msg); }
 function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
 
+function comma_join(array) {
+  if  (array != null) {
+    return array.join(", ");
+  }
+  return '';
+}
+
 /**
  * Updates table with job data.
  */
@@ -82,8 +89,8 @@ function updateJobDialog(job) {
   }
   $('#job-jt-url').text(job.jobId);
   $('#job-jt-url').attr('href', job.trackingUrl);
-  $('#job-aliases').text(job.aliases.join(", "));
-  $('#job-features').text(job.features.join(", "));
+  $('#job-aliases').text(comma_join(job.aliases));
+  $('#job-features').text(comma_join(job.features));
   $('#job-status').text(job.status);
   $('#job-mapper-status').text(buildTaskString(job.totalMappers, job.mapProgress));
   $('#job-reducer-status').text(buildTaskString(job.totalReducers, job.reduceProgress));
@@ -143,8 +150,8 @@ function updateTableRow(job) {
   var row = $('#row-num-' + job.index);
   $('.job-jt-url', row).text(job.jobId).attr('href', job.trackingUrl);
   $('.row-job-status', row).text(value(job.status));
-  $('.row-job-alias', row).text(value(job.aliases.join(", ")));
-  $('.row-job-feature', row).text(value(job.features.join(", ")));
+  $('.row-job-alias', row).text(comma_join(job.aliases));
+  $('.row-job-feature', row).text(comma_join(job.features));
   $('.row-job-mappers', row).text(buildTaskString(job.totalMappers, job.mapProgress));
   $('.row-job-reducers', row).text(buildTaskString(job.totalReducers, job.reduceProgress));
 }
