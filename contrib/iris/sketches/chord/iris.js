@@ -1,5 +1,4 @@
 // globals
-var backendBaseUrl = "http://localhost:8080";
 var lastProcessedEventId = -1;
 
 // storage for job data and lookup
@@ -62,12 +61,12 @@ function updateJobDialog(job) {
   var props = $('.job-prop-list');
   $('.job-jt-url', props).text(job.jobId);
   $('.job-jt-url', props).attr('href', job.trackingUrl);
-  $('.job-alias', props).text(job.aliases);
-  $('.job-feature', props).text(job.features);
   $('.job-scope', props).text(job.name);
+  $('.job-aliases', props).text(job.aliases);
+  $('.job-features', props).text(job.features);
+  $('.job-status', props).text(job.status);
   $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
   $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
-  $('.job-status', props).text(job.status);
   if (job.index >= 0) {
     $('.job-n-of-n', props).text('job ' + (job.index + 1) + ' of ' + jobs.length);
   } else {
@@ -107,7 +106,7 @@ function loadTable() {
       if (job.index % 2 != 0) {
           rowClass = 'odd'
       }
-      $('#rounded-corner tr:last').after(
+      $('.job-summary tr:last').after(
          '<tr id="row-num-' + job.index + '" class="' + rowClass + '">'+
           '<td class="row-job-num">' + (job.index+1) + '</td>' +
           '<td class="row-job-id"><a target="_blank" class="job-jt-url"></a></td>' +
@@ -148,6 +147,8 @@ function handleJobStartedEvent(event) {
   job.jobId = event.eventData.jobId;
   job.status = "RUNNING";
   jobsByJobId[job.jobId] = job;
+  updateJobData(event.eventData);
+  updateTableRow(job);
   selectJob(job);
   refreshDisplay();
 }
@@ -162,6 +163,7 @@ function handleJobCompleteEvent(event) {
   if (i < jobs.length) {
     selectJob(jobs[i]);
   }
+  updateTableRow(job);
   refreshDisplay();
 }
 
@@ -171,26 +173,28 @@ function handleJobFailedEvent(event) {
   if (job == null) return;
   info(job.jobId + ' failed');
   job.status = "FAILED";
+  updateTableRow(job);
 }
 
 function handleJobProgressEvent(event) {
   var job = updateJobData(event.eventData);
   if (job == null) return;
-  if (job.isComplete) {
-    if (job.isSuccessful) {
+  if (job.isComplete == "true") {
+    if (job.isSuccessful == "true") {
       job.status = "COMPLETE";
     } else {
       job.status = "FAILED";
     }
   }
+  updateTableRow(job);
   if (isSelected(job)) {
     updateJobDialog(job);
   }
 }
 
 function handleScriptProgressEvent(event) {
-  info('script progress: ' + event.eventData.scriptProgress + '%');
   scriptProgress = event.eventData.scriptProgress;
+  info('script progress: ' + scriptProgress + '%');
   $('#progressbar div').width(scriptProgress + '%')
 }
 
@@ -214,7 +218,6 @@ function updateJobData(data) {
   $.each(data, function(key, value) {
     job[key] = value;
   });
-  updateTableRow(job);
   return job
 }
 
@@ -226,23 +229,29 @@ function buildTaskString(total, progress) {
   if (total == null || progress == null) {
     return ''
   }
-  return total + ' (' + progress*100 + '%)'
+  return total + ' (' + progress * 100 + '%)'
 }
 
 /**
  * Polls back end for new events.
  */
 function pollEvents() {
+  // are we there yet?
   var scriptDone = false;
   if (scriptProgress == 100) {
-    scriptDone = true
-    jobs.forEach(function(job) {
-        if(job.status != "COMPLETE" && job.status != "FAILED") {
-          scriptDone = false;
-        }
-    });
+    scriptDone = true;
+    for (var i = 0; i < jobs.length; i++) {
+      var job = jobs[i];
+      if(job.status != "COMPLETE" && job.status != "FAILED") {
+        scriptDone = false;
+        break;
+      }
+    }
   }
+
+  // stop polling for events if all jobs are done
   if (scriptDone) {
+    info("Pig script finished");
     stopEventPolling();
     return;
   }
