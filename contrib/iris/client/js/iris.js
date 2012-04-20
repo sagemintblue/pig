@@ -1,6 +1,16 @@
-// demo data
-jobsDag = "data/small-dag.json";
-jobsEvents = "data/small-events.json";
+var url = window.location.href;
+
+// handle demo data
+if (url.indexOf('?localdata=small') != -1) {
+  jobsDag = "data/small-dag.json";
+  jobsEvents = "data/small-events.json";
+} else if (url.indexOf('?localdata=large') != -1) {
+  jobsDag = "data/large-dag.json";
+  jobsEvents = "data/large-events.json";
+} else {
+  jobsDag = "dag";
+  jobsEvents = "events";
+}
 
 // globals
 var lastProcessedEventId = -1;
