@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WEBROOT=$(dirname "$0")/client
+WEBROOT="$(dirname $0)/../client"
 PORT="${1:-8888}"
 
 cd "$WEBROOT"

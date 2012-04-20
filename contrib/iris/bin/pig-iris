@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function log() { echo $@ >&2; }
+function die() { log $@; exit 1; }
+
+# configure environment
+export PIG_HOME="${PIG_HOME:-$(dirname $0)/../../..}"
+export PIG_CLASSPATH=$(ls "$PIG_HOME"/pig-*.jar) \
+    || die "Failed to find pig jar in path '$PIG_HOME'"
+export IRIS_HOME="${IRIS_HOME:-$PIG_HOME/contrib/iris}"
+
+# configure the iris pig notification listener
+PIG_OPTS="-Dpig.notification.listener=com.twitter.twadoop.pig.stats.PigStatsDataVizCollector $PIG_OPTS"
+
+exec "$PIG_HOME/bin/pig" $PIG_OPTS $@
