@@ -367,7 +367,7 @@ function jobColor(d) {
   } if (d.job.status == "FAILED") {
     return errorFill(d.index);
   }
-  return fill(d.index);
+  return d3.hsl(fill(d.index)).darker(0.5);
 }
 
 // more color funcs
@@ -403,7 +403,7 @@ var svg = d3.select("#chart")
 function initialize() {
   // initialize color palette
   var n = jobs.length;
-  if (n > 9) n = 9;
+  if (n > 7) n = 7;
   fill = d3.scale.ordinal().range(colorbrewer.Greys[n]);
   successFill = d3.scale.ordinal().range(colorbrewer.Greens[n]);
   errorFill = d3.scale.ordinal().range(colorbrewer.Reds[n]);
