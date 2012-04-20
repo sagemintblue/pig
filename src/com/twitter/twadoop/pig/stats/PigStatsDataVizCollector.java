@@ -30,7 +30,8 @@ public class PigStatsDataVizCollector implements PigProgressNotificationListener
   ScriptStatusServer server;
 
   public PigStatsDataVizCollector() {
-    server = new ScriptStatusServer(this, 8080);
+    String port = System.getProperty("iris.port.number", "8080");
+    server = new ScriptStatusServer(this, Integer.parseInt(port));
     server.start();
   }
 
