@@ -82,8 +82,8 @@ function updateJobDialog(job) {
   }
   $('#job-jt-url').text(job.jobId);
   $('#job-jt-url').attr('href', job.trackingUrl);
-  $('#job-aliases').text(job.aliases);
-  $('#job-features').text(job.features);
+  $('#job-aliases').text(job.aliases.join(", "));
+  $('#job-features').text(job.features.join(", "));
   $('#job-status').text(job.status);
   $('#job-mapper-status').text(buildTaskString(job.totalMappers, job.mapProgress));
   $('#job-reducer-status').text(buildTaskString(job.totalReducers, job.reduceProgress));
@@ -143,8 +143,8 @@ function updateTableRow(job) {
   var row = $('#row-num-' + job.index);
   $('.job-jt-url', row).text(job.jobId).attr('href', job.trackingUrl);
   $('.row-job-status', row).text(value(job.status));
-  $('.row-job-alias', row).text(value(job.aliases));
-  $('.row-job-feature', row).text(value(job.features));
+  $('.row-job-alias', row).text(value(job.aliases.join(", ")));
+  $('.row-job-feature', row).text(value(job.features.join(", ")));
   $('.row-job-mappers', row).text(buildTaskString(job.totalMappers, job.mapProgress));
   $('.row-job-reducers', row).text(buildTaskString(job.totalReducers, job.reduceProgress));
 }
