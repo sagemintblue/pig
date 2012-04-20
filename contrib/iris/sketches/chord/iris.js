@@ -11,10 +11,52 @@ var nameByIndex = {};
 var matrix = [];
 
 // currently selected job
-var selectedJob;
-var selectedJobLastUpdate;
-var selectedColor = "#00FF00";
+var jobSelected;
+var jobSelectedLastUpdate;
+var jobSelectedColor = "#00FF00";
 
+/**
+ * Select the given job and update global state.
+ */
+function selectJob(job) {
+  jobSelected = job;
+  jobSelectedLastUdpate = new Date().getTime();
+  updateJobDialog(job);
+}
+
+function isSelected(job) {
+  return job === jobSelected;
+}
+
+// mouse over job
+var jobMouseOver;
+var jobMouseOverColor = "#0000BB";
+
+function handleArcMouseOver(d, i) {
+  info("Mouse is over index '" + i + "'");
+  jobMouseOver = d.job;
+  refreshDisplay();
+}
+
+function isMouseOver(job) {
+  return job === jobMouseOver;
+}
+
+function handleArcClick(d, i) {
+  selectJob(d.job);
+  refreshDisplay();
+}
+
+/**
+ * Display messages.
+ */
+
+function error(msg) { d3.select('#scriptStatusDialog').text(msg); }
+function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
+
+/**
+ * Updates table with job data.
+ */
 function updateJobDialog(job) {
   var props = $('.job-prop-list');
   $('.job-jt-url', props).text(job.jobId);
@@ -34,32 +76,11 @@ function updateJobDialog(job) {
 }
 
 /**
- * Select the given job and update global state.
- */
-function selectJob(job) {
-  selectedJob = job;
-  selectedJobLastUdpate = new Date().getTime();
-  updateJobDialog(job);
-}
-
-function isSelected(j) {
-  return j === selectedJob;
-}
-
-/**
- * Displays an error message.
- */
-function displayError(msg) {
-  // TODO(Andy Schlaikjer): Display error, pause event polling
-  alert(msg);
-}
-
-/**
  * Retrieves snapshot of current DAG of scopes from back end.
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("/dag", function(data) {
+  d3.json("large-dag.json", function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -115,15 +136,14 @@ function updateTableRow(job) {
   $('.row-job-reducers', row).text(buildTaskString(job.totalReducers, job.reduceProgress));
 }
 
-// TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
+/**
+ * Updates job state, registers job with jobId, selects started job, updates
+ * display.
+ */
 function handleJobStartedEvent(event) {
-  //d3.select('#updateDialog').text(event.eventData.jobId + ' started');
-  var name = event.eventData.name;
-  var job = jobsByName[name];
-  if (job == null) {
-    alert("Job with name '" + name + "' not found");
-    return;
-  }
+  var job = updateJobData(event.eventData);
+  if (job == null) return;
+  info(job.jobId + ' started');
   job.jobId = event.eventData.jobId;
   job.status = "RUNNING";
   jobsByJobId[job.jobId] = job;
@@ -136,17 +156,13 @@ function handleJobStartedEvent(event) {
 function handleJobCompleteEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
+  if (job == null) return;
+  info(job.jobId + ' complete');
   job.status = "COMPLETE";
-  //d3.select('#updateDialog').text(job.jobId + ' complete');
-
-  // TODO
-  job = jobsByName[job.name];
   var i = job.index + 1;
-  if (i >= jobs.length) {
-    // jump to first job if we've reached the end
-    i = 0;
+  if (i < jobs.length) {
+    selectJob(jobs[i]);
   }
-  selectJob(jobs[i]);
   updateTableRow(job);
   refreshDisplay();
 }
@@ -154,12 +170,15 @@ function handleJobCompleteEvent(event) {
 function handleJobFailedEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
+  if (job == null) return;
+  info(job.jobId + ' failed');
   job.status = "FAILED";
   updateTableRow(job);
 }
 
 function handleJobProgressEvent(event) {
   var job = updateJobData(event.eventData);
+  if (job == null) return;
   if (job.isComplete) {
     if (job.isSuccessful) {
       job.status = "COMPLETE";
@@ -181,11 +200,21 @@ function handleScriptProgressEvent(event) {
   $('#progressbar div').width(scriptProgress + '%')
 }
 
-// looks up the job from data.jobId and updates all data fields onto job
+/**
+ * Looks up job with data.name or data.jobId and updates contents of job with
+ * fields from data.
+ */
 function updateJobData(data) {
-  var job = jobsByJobId[data.jobId];
+  var job, id;
+  if (data.name != null) {
+    id = data.name;
+    job = jobsByName[id];
+  } else {
+    id = data.jobId;
+    job = jobsByJobId[id];
+  }
   if (job == null) {
-    alert("Job with name '" + name + "' not found");
+    alert("Job with id '" + id + "' not found");
     return;
   }
   $.each(data, function(key, value) {
@@ -220,10 +249,10 @@ function pollEvents() {
   }
   if (scriptDone) {
     stopEventPolling();
-      return
+    return;
   }
 
-  d3.json("/events?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json("large-events.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
@@ -261,9 +290,6 @@ function pollEvents() {
   });
 }
 
-// kick off event poller and keep track of interval id so we can pause polling if needed
-//var pollEventsIntervalId = setInterval(pollEvents, 10000);
-
 // group angle initialized once we know the number of jobs
 var ga = 0;
 var ga2 = 0;
@@ -283,7 +309,7 @@ var chords;
 
 // returns start angle for a chord group
 function groupStartAngle(d) {
-  return  ga * d.index + gap + Math.PI / 2 - ga2;
+  return  ga * d.index - ga2;
 }
 
 // returns end angle for a chord group
@@ -310,7 +336,9 @@ function chordAngle(d, f, i, n) {
 function jobColor(d) {
   var c = fill(d.index);
   if (isSelected(d.job)) {
-    c = d3.rgb(selectedColor);
+    c = d3.rgb(jobSelectedColor);
+  } else if (isMouseOver(d.job)) {
+    c = d3.rgb(jobMouseOverColor);
   } else {
     c = d3.interpolateRgb(c, "white")(1/2);
   }
@@ -322,6 +350,11 @@ function chordStroke(d) { return d3.rgb(jobColor(d.source)).darker(); }
 function chordFill(d) { return jobColor(d.source); }
 
 // jobs themselves are arc segments around the edge of the chord diagram
+var arcMouse = d3.svg.arc()
+  .innerRadius(r0)
+  .outerRadius(r0 + 200)
+  .startAngle(groupStartAngle)
+  .endAngle(groupEndAngle);
 var arc = d3.svg.arc()
   .innerRadius(r0)
   .outerRadius(r0 + 10)
@@ -334,7 +367,9 @@ var svg = d3.select("#chart")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")
-  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(0)");
+  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(90)")
+  .append("svg:g")
+  .attr("transform", "rotate(0)");
 
 /**
  * Initialize visualization.
@@ -342,8 +377,8 @@ var svg = d3.select("#chart")
 function initialize() {
   // initialize group angle
   ga = 2 * Math.PI / jobs.length;
-  ga2 = ga / 2;
-  gap = ga2 * 0.2;
+  gap = ga * 0.1;
+  ga2 = (ga - gap) / 2;
 
   // update state
   selectJob(jobs[0]);
@@ -434,7 +469,16 @@ function initialize() {
     .append("svg:g")
     .attr("class", "group");
 
-  // add an arc to each g.group
+  // add background arc to each g.group to support mouse interaction
+  g.append("svg:path")
+    .attr("class", "arc-mouse")
+    .style("fill", "white")
+    .style("stroke", "white")
+    .attr("d", arcMouse)
+    .on('mouseover', handleArcMouseOver)
+    .on('click', handleArcClick);
+
+  // add visual arc to each g.group
   g.append("svg:path")
     .attr("class", "arc")
     .style("fill", jobColor)
@@ -450,7 +494,7 @@ function initialize() {
       return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
         + "translate(" + (r0 + 26) + ")";
     })
-    .text(function(d) { return nameByIndex[d.index]; });
+    .text(function(d) { return d.index + 1; });
 
   // add chords
   svg.selectAll("path.chord")
@@ -478,10 +522,18 @@ function refreshDisplay() {
     .transition()
     .style("stroke", chordStroke)
     .style("fill", chordFill);
-
+  /*
   // spin svg to selected job
+  var a = (-ga * jobSelected.index) * 180 / Math.PI + 360;
+  info("Angle is '" + a + "'");
   svg.transition()
-    .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(" + ((-ga * selectedJob.index) * 180 / Math.PI) + ")");
+    .duration(1000)
+    .attr("transform", "rotate(" + a + ")");
+  */
+}
+
+function currentRotation() {
+  return svg.attr("transform").match(/rotate\(([^\)]+)\)/i)[0];
 }
 
 d3.select(self.frameElement).style("height", "600px");
