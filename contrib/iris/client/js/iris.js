@@ -1,3 +1,7 @@
+// demo data
+jobsDag = "data/large-dag.json";
+jobsEvents = "data/large-events.json";
+
 // globals
 var lastProcessedEventId = -1;
 
@@ -75,7 +79,7 @@ function updateJobDialog(job) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("data/small-dag.json", function(data) {
+  d3.json(jobsDag, function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -250,7 +254,7 @@ function pollEvents() {
     return;
   }
 
-  d3.json("data/event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json(jobsEvents + "?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
@@ -298,7 +302,7 @@ var r1 = 400 / 2;
 var r0 = r1 - 60;
 
 // color palette
-var fill = d3.scale.ordinal().range(colorbrewer.Greys[9]);
+var fill, successFill, errorFill;
 
 // job dependencies are visualized by chords
 var chord = d3.layout.chord();
@@ -349,8 +353,8 @@ function chordFill(d) { return jobColor(d.source); }
 
 // jobs themselves are arc segments around the edge of the chord diagram
 var arcMouse = d3.svg.arc()
-  .innerRadius(r0)
-  .outerRadius(r0 + 200)
+  .innerRadius(50)
+  .outerRadius(r0 + 300)
   .startAngle(groupStartAngle)
   .endAngle(groupEndAngle);
 var arc = d3.svg.arc()
@@ -362,10 +366,10 @@ var arc = d3.svg.arc()
 // set up canvas
 var svg = d3.select("#chart")
   .append("svg:svg")
-  .attr("width", r1 * 2)
+  .attr("width", r1 * 3)
   .attr("height", r1 * 2)
   .append("svg:g")
-  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(90)")
+  .attr("transform", "translate(" + (r1 * 1.5) + "," + r1 + ")rotate(90)")
   .append("svg:g")
   .attr("transform", "rotate(0)");
 
@@ -377,6 +381,8 @@ function initialize() {
   var n = jobs.length;
   if (n > 9) n = 9;
   fill = d3.scale.ordinal().range(colorbrewer.Greys[n]);
+  successFill = d3.scale.ordinal().range(colorbrewer.Greens[n]);
+  errorFill = d3.scale.ordinal().range(colorbrewer.Reds[n]);
 
   // initialize group angle
   ga = 2 * Math.PI / jobs.length;
