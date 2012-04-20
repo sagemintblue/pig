@@ -213,9 +213,6 @@ function pollEvents() {
   });
 }
 
-// kick off event poller and keep track of interval id so we can pause polling if needed
-//var pollEventsIntervalId = setInterval(pollEvents, 10000);
-
 // group angle initialized once we know the number of jobs
 var ga = 0;
 var ga2 = 0;
@@ -235,7 +232,7 @@ var chords;
 
 // returns start angle for a chord group
 function groupStartAngle(d) {
-  return  ga * d.index + gap + Math.PI / 2 - ga2;
+  return  ga * d.index - ga2 + Math.PI / 2;
 }
 
 // returns end angle for a chord group
@@ -294,8 +291,8 @@ var svg = d3.select("#chart")
 function initialize() {
   // initialize group angle
   ga = 2 * Math.PI / jobs.length;
-  ga2 = ga / 2;
-  gap = ga2 * 0.2;
+  gap = ga * 0.1;
+  ga2 = (ga - gap) / 2;
 
   // update state
   selectJob(jobs[0]);
