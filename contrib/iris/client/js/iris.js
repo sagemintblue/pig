@@ -356,10 +356,10 @@ function chordAngle(d, f, i, n) {
 
 // returns color for job arc and chord
 function jobColor(d) {
-  if (isSelected(d.job)) {
-    return d3.rgb(jobSelectedColor).brighter();
-  } if (isMouseOver(d.job)) {
+  if (isMouseOver(d.job)) {
     return d3.rgb(jobMouseOverColor);
+  } if (isSelected(d.job)) {
+    return d3.rgb(jobSelectedColor).brighter();
   } if (d.job.status == "RUNNING") {
     return d3.rgb(jobSelectedColor);
   } if (d.job.status == "COMPLETE") {
