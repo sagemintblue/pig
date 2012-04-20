@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Iris</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pig pipeline visualization and monitoring">
+    <meta name="author" content="Twitter">
+
+    <!-- ensure js libs are loaded -->
+
+    <!-- Le styles -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/iris.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="ico/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="ico/apple-touch-icon-57-precomposed.png">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#">Iris</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <div class="row">
+        <div class="span12"><p>Status: <span  id="scriptStatusDialog"></span></p></div>
+      </div>
+      <div class="row">
+        <div class="span12"><div id="progressbar" class="progress"><div class="bar"></div></div></div>
+      </div>
+
+      <div class="row">
+        <div class="span6" id="chart"></div>
+        <div class="span6">
+          <table class="job-prop-list table" summary="Job Status">
+            <thead>
+              <tr>
+                <th scope="col" class="rounded-head-left">Property</th>
+                <th scope="col" class="rounded-head-right">Value</th>
+              </tr>
+            </thead>
+            <tfoot>
+              <tr>
+                <td class="rounded-foot-left">&nbsp;</td>
+                <td class="rounded-foot-right job-n-of-n">&nbsp;</td>
+              </tr>
+            </tfoot>
+            <tbody>
+              <tr><td>Job ID</td><td><a class="job-jt-url" target="_blank"></a></td></tr>
+              <tr><td>Name</td><td class="job-scope"></td></tr>
+              <tr><td>Aliases</td><td class="job-aliases"></td></tr>
+              <tr><td>Features</td><td class="job-features"></td></tr>
+              <tr><td>Status</td><td class="job-status"></td></tr>
+              <tr><td>Mappers</td><td class="job-mapper-status"></td></tr>
+              <tr><td>Reducers</td><td class="job-reducer-status"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="span12">
+          <table class="job-summary table" summary="Job Summary">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">Job ID</th>
+                <th scope="col">Status</th>
+                <th scope="col">Alias</th>
+                <th scope="col">Feature</th>
+                <th scope="col">Mappers</th>
+                <th scope="col">Reducers</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <hr>
+
+      <footer>
+        <p>&copy; Team Iris 2012</p>
+      </footer>
+
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/jquery-1.7.2.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/d3-2.9.1.min.js"></script>
+    <script src="js/colorbrewer.js"></script>
+    <script src="js/iris.js"></script>
+
+  </body>
+</html>

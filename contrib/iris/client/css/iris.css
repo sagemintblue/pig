@@ -1,0 +1,17 @@
+#chart {
+  text-align: center;
+}
+
+path.arc {
+}
+
+path.chord {
+  fill-opacity: .67;
+}
+
+.job-prop-list {
+}
+
+.job-summary {
+    width: 100%;
+}
