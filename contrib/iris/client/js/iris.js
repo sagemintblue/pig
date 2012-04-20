@@ -56,19 +56,18 @@ function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
  * Updates table with job data.
  */
 function updateJobDialog(job) {
+  if (job.index >= 0) {
+    $('#job-n-of-n').text((job.index + 1) + ' of ' + jobs.length);
+  } else {
+    $('#job-n-of-n').text('');
+  }
   $('#job-jt-url').text(job.jobId);
   $('#job-jt-url').attr('href', job.trackingUrl);
-  $('#job-scope').text(job.name);
   $('#job-aliases').text(job.aliases);
   $('#job-features').text(job.features);
   $('#job-status').text(job.status);
   $('#job-mapper-status').text(buildTaskString(job.totalMappers, job.mapProgress));
   $('#job-reducer-status').text(buildTaskString(job.totalReducers, job.reduceProgress));
-  if (job.index >= 0) {
-    $('#job-n-of-n').text('job ' + (job.index + 1) + ' of ' + jobs.length);
-  } else {
-    $('#job-n-of-n').text('');
-  }
 }
 
 /**
@@ -114,7 +113,7 @@ function loadTable() {
         '</tr>'
     );
     $('#row-num-' + job.index).bind('click', function() {
-      selectJob(this.job);
+      selectJob(job);
     });
     updateTableRow(job);
   });
@@ -122,8 +121,7 @@ function loadTable() {
 
 function updateTableRow(job) {
   var row = $('#row-num-' + job.index);
-  $('.job-jt-url', row).text(job.jobId);
-  $('.job-jt-url', row).attr('href', job.trackingUrl);
+  $('.job-jt-url', row).text(job.jobId).attr('href', job.trackingUrl);
   $('.row-job-status', row).text(value(job.status));
   $('.row-job-alias', row).text(value(job.aliases));
   $('.row-job-feature', row).text(value(job.features));
