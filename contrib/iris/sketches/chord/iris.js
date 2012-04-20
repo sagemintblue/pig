@@ -68,6 +68,11 @@ function updateJobDialog(job) {
   $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
   $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
   $('.job-status', props).text(job.status);
+  if (job.index >= 0) {
+    $('.job-n-of-n', props).text('job ' + (job.index + 1) + ' of ' + jobs.length);
+  } else {
+    $('.job-n-of-n', props).text('');
+  }
   $('.InnerRight').show();
 }
 
@@ -83,9 +88,53 @@ function loadDag() {
     }
     jobs = data;
     initialize();
+    loadTable();
     clearTimeout(loadDagIntervalId);
     startEventPolling();
   });
+}
+
+function value(value) {
+  if (value == null) {
+    return ''
+  }
+  return value;
+}
+
+function loadTable() {
+  jobs.forEach(function(job) {
+      var rowClass = ''
+      if (job.index % 2 != 0) {
+          rowClass = 'odd'
+      }
+      $('#rounded-corner tr:last').after(
+         '<tr id="row-num-' + job.index + '" class="' + rowClass + '">'+
+          '<td class="row-job-num">' + (job.index+1) + '</td>' +
+          '<td class="row-job-id"><a target="_blank" class="job-jt-url"></a></td>' +
+          '<td class="row-job-status"/>' +
+          '<td class="row-job-alias"/>' +
+          '<td class="row-job-feature"/>' +
+          '<td class="row-job-mappers"/>' +
+          '<td class="row-job-reducers"/>' +
+         '</tr>'
+      );
+      $('#row-num-' + job.index).bind('click', function() {
+        selectJob(this.job);
+      });
+
+      updateTableRow(job);
+  });
+}
+
+function updateTableRow(job) {
+  var row = $('#row-num-' + job.index);
+  $('.job-jt-url', row).text(job.jobId);
+  $('.job-jt-url', row).attr('href', job.trackingUrl);
+  $('.row-job-status', row).text(value(job.status));
+  $('.row-job-alias', row).text(value(job.aliases));
+  $('.row-job-feature', row).text(value(job.features));
+  $('.row-job-mappers', row).text(buildTaskString(job.totalMappers, job.mapProgress));
+  $('.row-job-reducers', row).text(buildTaskString(job.totalReducers, job.reduceProgress));
 }
 
 /**
@@ -95,8 +144,9 @@ function loadDag() {
 function handleJobStartedEvent(event) {
   var job = updateJobData(event.eventData);
   if (job == null) return;
+  info(job.jobId + ' started');
+  job.jobId = event.eventData.jobId;
   job.status = "RUNNING";
-  d3.select('#updateDialog').text(job.jobId + ' started');
   jobsByJobId[job.jobId] = job;
   selectJob(job);
   refreshDisplay();
@@ -106,8 +156,8 @@ function handleJobCompleteEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
   if (job == null) return;
+  info(job.jobId + ' complete');
   job.status = "COMPLETE";
-  d3.select('#updateDialog').text(job.jobId + ' complete');
   var i = job.index + 1;
   if (i < jobs.length) {
     selectJob(jobs[i]);
@@ -119,8 +169,8 @@ function handleJobFailedEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
   if (job == null) return;
+  info(job.jobId + ' failed');
   job.status = "FAILED";
-  d3.select('#updateDialog').text(job.jobId + ' failed');
 }
 
 function handleJobProgressEvent(event) {
@@ -133,15 +183,17 @@ function handleJobProgressEvent(event) {
       job.status = "FAILED";
     }
   }
-  d3.select('#updateDialog')
-    .text(job.jobId + ' map progress: ' + job.mapProgress * 100 + '%'
-      + ' reduce progress: ' + job.reduceProgress * 100 + '%');
+
+  if (isSelected(job)) {
+    updateJobDialog(job);
+  }
 }
 
 function handleScriptProgressEvent(event) {
   d3.select('#scriptStatusDialog')
       .text('script progress: ' + event.eventData.scriptProgress + '%');
   scriptProgress = event.eventData.scriptProgress;
+  $('#progressbar div').width(scriptProgress + '%')
 }
 
 /**
@@ -164,7 +216,8 @@ function updateJobData(data) {
   $.each(data, function(key, value) {
     job[key] = value;
   });
-  return job;
+  updateTableRow(job);
+  return job
 }
 
 function hideJobDialog() {
