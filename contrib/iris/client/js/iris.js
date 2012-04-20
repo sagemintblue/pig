@@ -247,7 +247,7 @@ function buildTaskString(total, progress) {
   if (total == null || progress == null) {
     return ''
   }
-  return total + ' (' + progress * 100 + '%)'
+  return total + ' (' + d3.round(progress * 100, 0) + '%)'
 }
 
 /**
