@@ -67,20 +67,16 @@ function loadDag() {
   });
 }
 
-
-// TODO(Andy Schlaikjer): update dag state based on event and trigger viz updates
+/**
+ * Updates job state, registers job with jobId, selects started job, updates
+ * display.
+ */
 function handleJobStartedEvent(event) {
-  d3.select('#updateDialog').text(event.eventData.jobId + ' started');
-  var name = event.eventData.name;
-  var job = jobsByName[name];
-  if (job == null) {
-    alert("Job with name '" + name + "' not found");
-    return;
-  }
-  job.jobId = event.eventData.jobId;
+  var job = updateJobData(event.eventData);
+  if (job == null) return;
   job.status = "RUNNING";
+  d3.select('#updateDialog').text(job.jobId + ' started');
   jobsByJobId[job.jobId] = job;
-  updateJobData(event.eventData);
   selectJob(job);
   refreshDisplay();
 }
@@ -88,29 +84,27 @@ function handleJobStartedEvent(event) {
 function handleJobCompleteEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
+  if (job == null) return;
   job.status = "COMPLETE";
   d3.select('#updateDialog').text(job.jobId + ' complete');
-
-  // TODO
-  job = jobsByName[job.name];
   var i = job.index + 1;
-  if (i >= jobs.length) {
-    // jump to first job if we've reached the end
-    i = 0;
+  if (i < jobs.length) {
+    selectJob(jobs[i]);
   }
-  selectJob(jobs[i]);
   refreshDisplay();
 }
 
 function handleJobFailedEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
+  if (job == null) return;
   job.status = "FAILED";
   d3.select('#updateDialog').text(job.jobId + ' failed');
 }
 
 function handleJobProgressEvent(event) {
   var job = updateJobData(event.eventData);
+  if (job == null) return;
   if (job.isComplete) {
     if (job.isSuccessful) {
       job.status = "COMPLETE";
@@ -129,17 +123,27 @@ function handleScriptProgressEvent(event) {
   scriptProgress = event.eventData.scriptProgress;
 }
 
-// looks up the job from data.jobId and updates all data fields onto job
+/**
+ * Looks up job with data.name or data.jobId and updates contents of job with
+ * fields from data.
+ */
 function updateJobData(data) {
-  var job = jobsByJobId[data.jobId];
+  var job, id;
+  if (data.name != null) {
+    id = data.name;
+    job = jobsByName[id];
+  } else {
+    id = data.jobId;
+    job = jobsByJobId[id];
+  }
   if (job == null) {
-    alert("Job with name '" + name + "' not found");
+    alert("Job with id '" + id + "' not found");
     return;
   }
   $.each(data, function(key, value) {
     job[key] = value;
   });
-  return job
+  return job;
 }
 
 function hideJobDialog() {
