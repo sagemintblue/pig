@@ -51,7 +51,7 @@ public class ScriptStatusServer implements Runnable {
         ContextHandler staticHandler = new ContextHandler();
         WebAppContext webappcontext = new WebAppContext();
         webappcontext.setContextPath("/");
-        webappcontext.setWar("contrib/iris/sketches/chord");
+        webappcontext.setWar("contrib/iris/client");
         server.addHandler(new APIHandler());
         server.addHandler(webappcontext);
         server.setStopAtShutdown(false);
