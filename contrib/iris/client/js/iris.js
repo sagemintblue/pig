@@ -1,6 +1,6 @@
 // demo data
-jobsDag = "data/large-dag.json";
-jobsEvents = "data/large-events.json";
+jobsDag = "data/small-dag.json";
+jobsEvents = "data/small-events.json";
 
 // globals
 var lastProcessedEventId = -1;
@@ -38,6 +38,11 @@ var jobMouseOverColor = d3.rgb(20, 155, 223);
 
 function handleArcMouseOver(d, i) {
   jobMouseOver = d.job;
+  refreshDisplay();
+}
+
+function handleChartMouseOut(d, i) {
+  jobMouseOver = null;
   refreshDisplay();
 }
 
@@ -201,6 +206,7 @@ function handleScriptProgressEvent(event) {
  * fields from data.
  */
 function updateJobData(data) {
+  // get job associated with data
   var job, id;
   if (data.name != null) {
     id = data.name;
@@ -209,10 +215,14 @@ function updateJobData(data) {
     id = data.jobId;
     job = jobsByJobId[id];
   }
+
+  // check for job retrieval failure
   if (job == null) {
     alert("Job with id '" + id + "' not found");
     return;
   }
+
+  // copy data into job
   $.each(data, function(key, value) {
     job[key] = value;
   });
@@ -336,15 +346,18 @@ function chordAngle(d, f, i, n) {
 
 // returns color for job arc and chord
 function jobColor(d) {
-  var c = fill(d.index);
   if (isSelected(d.job)) {
-    c = d3.rgb(jobSelectedColor);
-  } else if (isMouseOver(d.job)) {
-    c = d3.rgb(jobMouseOverColor);
-  } else {
-    c = d3.interpolateRgb(c, "white")(1/2);
+    return d3.rgb(jobSelectedColor).brighter();
+  } if (isMouseOver(d.job)) {
+    return d3.rgb(jobMouseOverColor);
+  } if (d.job.status == "RUNNING") {
+    return d3.rgb(jobSelectedColor);
+  } if (d.job.status == "COMPLETE") {
+    return successFill(d.index);
+  } if (d.job.status == "FAILED") {
+    return errorFill(d.index);
   }
-  return c;
+  return fill(d.index);
 }
 
 // more color funcs
@@ -368,6 +381,7 @@ var svg = d3.select("#chart")
   .append("svg:svg")
   .attr("width", r1 * 3)
   .attr("height", r1 * 2)
+  .on('mouseout', handleChartMouseOut)
   .append("svg:g")
   .attr("transform", "translate(" + (r1 * 1.5) + "," + r1 + ")rotate(90)")
   .append("svg:g")
