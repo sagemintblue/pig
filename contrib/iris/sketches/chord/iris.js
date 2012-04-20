@@ -1,5 +1,4 @@
 // globals
-var backendBaseUrl = "http://localhost:8080";
 var lastProcessedEventId = -1;
 
 // storage for job data and lookup
@@ -60,7 +59,7 @@ function displayError(msg) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("small-dag.json", function(data) {
+  d3.json("/dag", function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -129,6 +128,7 @@ function handleJobStartedEvent(event) {
   job.status = "RUNNING";
   jobsByJobId[job.jobId] = job;
   updateJobData(event.eventData);
+  updateTableRow(job);
   selectJob(job);
   refreshDisplay();
 }
@@ -147,6 +147,7 @@ function handleJobCompleteEvent(event) {
     i = 0;
   }
   selectJob(jobs[i]);
+  updateTableRow(job);
   refreshDisplay();
 }
 
@@ -154,7 +155,7 @@ function handleJobFailedEvent(event) {
   event.eventData.jobId = event.eventData.jobData.jobId;
   var job = updateJobData(event.eventData);
   job.status = "FAILED";
-  //d3.select('#updateDialog').text(job.jobId + ' failed');
+  updateTableRow(job);
 }
 
 function handleJobProgressEvent(event) {
@@ -167,6 +168,7 @@ function handleJobProgressEvent(event) {
     }
   }
 
+  updateTableRow(job);
   if (isSelected(job)) {
     updateJobDialog(job);
   }
@@ -189,7 +191,6 @@ function updateJobData(data) {
   $.each(data, function(key, value) {
     job[key] = value;
   });
-  updateTableRow(job);
   return job
 }
 
@@ -222,7 +223,7 @@ function pollEvents() {
       return
   }
 
-  d3.json("event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json("/events?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
