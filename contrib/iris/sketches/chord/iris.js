@@ -12,10 +12,52 @@ var nameByIndex = {};
 var matrix = [];
 
 // currently selected job
-var selectedJob;
-var selectedJobLastUpdate;
-var selectedColor = "#00FF00";
+var jobSelected;
+var jobSelectedLastUpdate;
+var jobSelectedColor = "#00FF00";
 
+/**
+ * Select the given job and update global state.
+ */
+function selectJob(job) {
+  jobSelected = job;
+  jobSelectedLastUdpate = new Date().getTime();
+  updateJobDialog(job);
+}
+
+function isSelected(job) {
+  return job === jobSelected;
+}
+
+// mouse over job
+var jobMouseOver;
+var jobMouseOverColor = "#0000BB";
+
+function handleArcMouseOver(d, i) {
+  info("Mouse is over index '" + i + "'");
+  jobMouseOver = d.job;
+  refreshDisplay();
+}
+
+function isMouseOver(job) {
+  return job === jobMouseOver;
+}
+
+function handleArcClick(d, i) {
+  selectJob(d.job);
+  refreshDisplay();
+}
+
+/**
+ * Display messages.
+ */
+
+function error(msg) { d3.select('#scriptStatusDialog').text(msg); }
+function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
+
+/**
+ * Updates table with job data.
+ */
 function updateJobDialog(job) {
   var props = $('.job-prop-list');
   $('.job-jt-url', props).text(job.jobId);
@@ -27,27 +69,6 @@ function updateJobDialog(job) {
   $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
   $('.job-status', props).text(job.status);
   $('.InnerRight').show();
-}
-
-/**
- * Select the given job and update global state.
- */
-function selectJob(job) {
-  selectedJob = job;
-  selectedJobLastUdpate = new Date().getTime();
-  updateJobDialog(job);
-}
-
-function isSelected(j) {
-  return j === selectedJob;
-}
-
-/**
- * Displays an error message.
- */
-function displayError(msg) {
-  // TODO(Andy Schlaikjer): Display error, pause event polling
-  alert(msg);
 }
 
 /**
@@ -259,7 +280,9 @@ function chordAngle(d, f, i, n) {
 function jobColor(d) {
   var c = fill(d.index);
   if (isSelected(d.job)) {
-    c = d3.rgb(selectedColor);
+    c = d3.rgb(jobSelectedColor);
+  } else if (isMouseOver(d.job)) {
+    c = d3.rgb(jobMouseOverColor);
   } else {
     c = d3.interpolateRgb(c, "white")(1/2);
   }
@@ -271,6 +294,11 @@ function chordStroke(d) { return d3.rgb(jobColor(d.source)).darker(); }
 function chordFill(d) { return jobColor(d.source); }
 
 // jobs themselves are arc segments around the edge of the chord diagram
+var arcMouse = d3.svg.arc()
+  .innerRadius(r0)
+  .outerRadius(r0 + 200)
+  .startAngle(groupStartAngle)
+  .endAngle(groupEndAngle);
 var arc = d3.svg.arc()
   .innerRadius(r0)
   .outerRadius(r0 + 10)
@@ -285,7 +313,7 @@ var svg = d3.select("#chart")
   .append("svg:g")
   .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(90)")
   .append("svg:g")
-  .attr("transform", "rotate(360)");
+  .attr("transform", "rotate(0)");
 
 /**
  * Initialize visualization.
@@ -385,7 +413,16 @@ function initialize() {
     .append("svg:g")
     .attr("class", "group");
 
-  // add an arc to each g.group
+  // add background arc to each g.group to support mouse interaction
+  g.append("svg:path")
+    .attr("class", "arc-mouse")
+    .style("fill", "white")
+    .style("stroke", "white")
+    .attr("d", arcMouse)
+    .on('mouseover', handleArcMouseOver)
+    .on('click', handleArcClick);
+
+  // add visual arc to each g.group
   g.append("svg:path")
     .attr("class", "arc")
     .style("fill", jobColor)
@@ -429,13 +466,18 @@ function refreshDisplay() {
     .transition()
     .style("stroke", chordStroke)
     .style("fill", chordFill);
-
+  /*
   // spin svg to selected job
-  var a = (-ga * selectedJob.index) * 180 / Math.PI + 360;
-  //alert("Angle is '" + a + "'");
+  var a = (-ga * jobSelected.index) * 180 / Math.PI + 360;
+  info("Angle is '" + a + "'");
   svg.transition()
     .duration(1000)
     .attr("transform", "rotate(" + a + ")");
+  */
+}
+
+function currentRotation() {
+  return svg.attr("transform").match(/rotate\(([^\)]+)\)/i)[0];
 }
 
 d3.select(self.frameElement).style("height", "600px");
