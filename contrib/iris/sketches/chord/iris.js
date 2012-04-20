@@ -111,6 +111,13 @@ function handleJobFailedEvent(event) {
 
 function handleJobProgressEvent(event) {
   var job = updateJobData(event.eventData);
+  if (job.isComplete) {
+    if (job.isSuccessful) {
+      job.status = "COMPLETE";
+    } else {
+      job.status = "FAILED";
+    }
+  }
   d3.select('#updateDialog')
     .text(job.jobId + ' map progress: ' + job.mapProgress * 100 + '%'
       + ' reduce progress: ' + job.reduceProgress * 100 + '%');
@@ -150,6 +157,20 @@ function buildTaskString(total, progress) {
  * Polls back end for new events.
  */
 function pollEvents() {
+  var scriptDone = false;
+  if (scriptProgress == 100) {
+    scriptDone = true
+    jobs.forEach(function(job) {
+        if(job.status != "COMPLETE" && job.status != "FAILED") {
+          scriptDone = false;
+        }
+    });
+  }
+  if (scriptDone) {
+    stopEventPolling();
+      return
+  }
+
   d3.json("event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
@@ -427,6 +448,6 @@ function stopEventPolling() {
 }
 
 function startEventPolling() {
-  pollIntervalId = setInterval('pollEvents()', 2000);
+  pollIntervalId = setInterval('pollEvents()', 1000);
   return pollIntervalId;
 }
