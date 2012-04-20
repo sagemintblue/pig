@@ -81,7 +81,7 @@ function updateJobDialog(job) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("large-dag.json", function(data) {
+  d3.json("small-dag.json", function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -96,7 +96,7 @@ function loadDag() {
 
 function value(value) {
   if (value == null) {
-    return ''
+    return '';
   }
   return value;
 }
@@ -183,15 +183,13 @@ function handleJobProgressEvent(event) {
       job.status = "FAILED";
     }
   }
-
   if (isSelected(job)) {
     updateJobDialog(job);
   }
 }
 
 function handleScriptProgressEvent(event) {
-  d3.select('#scriptStatusDialog')
-      .text('script progress: ' + event.eventData.scriptProgress + '%');
+  info('script progress: ' + event.eventData.scriptProgress + '%');
   scriptProgress = event.eventData.scriptProgress;
   $('#progressbar div').width(scriptProgress + '%')
 }
@@ -249,7 +247,7 @@ function pollEvents() {
     return;
   }
 
-  d3.json("large-events.json?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json("event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
@@ -293,8 +291,8 @@ var ga2 = 0;
 var gap = 0;
 
 // radii of svg figure
-var r1 = 600 / 2;
-var r0 = r1 - 120;
+var r1 = 400 / 2;
+var r0 = r1 - 60;
 
 // define color palette
 var fill = d3.scale.category20b();
@@ -533,7 +531,7 @@ function currentRotation() {
   return svg.attr("transform").match(/rotate\(([^\)]+)\)/i)[0];
 }
 
-d3.select(self.frameElement).style("height", "600px");
+d3.select(self.frameElement).style("height", "500px");
 
 var loadDagIntervalId;
 var pollIntervalId;
