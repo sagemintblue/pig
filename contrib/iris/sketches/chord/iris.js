@@ -55,7 +55,7 @@ function displayError(msg) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("small-dag.json", function(data) {
+  d3.json("large-dag.json", function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -172,10 +172,10 @@ function pollEvents() {
   }
   if (scriptDone) {
     stopEventPolling();
-      return
+    return;
   }
 
-  d3.json("event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json("large-events.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
@@ -232,7 +232,7 @@ var chords;
 
 // returns start angle for a chord group
 function groupStartAngle(d) {
-  return  ga * d.index - ga2 + Math.PI / 2;
+  return  ga * d.index - ga2;
 }
 
 // returns end angle for a chord group
@@ -283,7 +283,9 @@ var svg = d3.select("#chart")
   .attr("width", r1 * 2)
   .attr("height", r1 * 2)
   .append("svg:g")
-  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(0)");
+  .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(90)")
+  .append("svg:g")
+  .attr("transform", "rotate(360)");
 
 /**
  * Initialize visualization.
@@ -399,7 +401,7 @@ function initialize() {
       return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
         + "translate(" + (r0 + 26) + ")";
     })
-    .text(function(d) { return nameByIndex[d.index]; });
+    .text(function(d) { return d.index + 1; });
 
   // add chords
   svg.selectAll("path.chord")
@@ -429,8 +431,11 @@ function refreshDisplay() {
     .style("fill", chordFill);
 
   // spin svg to selected job
+  var a = (-ga * selectedJob.index) * 180 / Math.PI + 360;
+  //alert("Angle is '" + a + "'");
   svg.transition()
-    .attr("transform", "translate(" + r1 + "," + r1 + ")rotate(" + ((-ga * selectedJob.index) * 180 / Math.PI) + ")");
+    .duration(1000)
+    .attr("transform", "rotate(" + a + ")");
 }
 
 d3.select(self.frameElement).style("height", "600px");
