@@ -114,6 +114,7 @@ function loadTable() {
     );
     $('#row-num-' + job.index).bind('click', function() {
       selectJob(job);
+      refreshDisplay();
     });
     updateTableRow(job);
   });
@@ -244,7 +245,7 @@ function pollEvents() {
 
   // stop polling for events if all jobs are done
   if (scriptDone) {
-    info("Pig script finished");
+    info("script finished");
     stopEventPolling();
     return;
   }
