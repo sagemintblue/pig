@@ -33,7 +33,6 @@ var jobMouseOver;
 var jobMouseOverColor = d3.rgb(20, 155, 223);
 
 function handleArcMouseOver(d, i) {
-  info("Mouse is over index '" + i + "'");
   jobMouseOver = d.job;
   refreshDisplay();
 }
@@ -50,7 +49,6 @@ function handleArcClick(d, i) {
 /**
  * Display messages.
  */
-
 function error(msg) { d3.select('#scriptStatusDialog').text(msg); }
 function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
 
@@ -58,21 +56,19 @@ function info(msg) { d3.select('#scriptStatusDialog').text(msg); }
  * Updates table with job data.
  */
 function updateJobDialog(job) {
-  var props = $('.job-prop-list');
-  $('.job-jt-url', props).text(job.jobId);
-  $('.job-jt-url', props).attr('href', job.trackingUrl);
-  $('.job-scope', props).text(job.name);
-  $('.job-aliases', props).text(job.aliases);
-  $('.job-features', props).text(job.features);
-  $('.job-status', props).text(job.status);
-  $('.job-mapper-status', props).text(buildTaskString(job.totalMappers, job.mapProgress));
-  $('.job-reducer-status', props).text(buildTaskString(job.totalReducers, job.reduceProgress));
+  $('#job-jt-url').text(job.jobId);
+  $('#job-jt-url').attr('href', job.trackingUrl);
+  $('#job-scope').text(job.name);
+  $('#job-aliases').text(job.aliases);
+  $('#job-features').text(job.features);
+  $('#job-status').text(job.status);
+  $('#job-mapper-status').text(buildTaskString(job.totalMappers, job.mapProgress));
+  $('#job-reducer-status').text(buildTaskString(job.totalReducers, job.reduceProgress));
   if (job.index >= 0) {
-    $('.job-n-of-n', props).text('job ' + (job.index + 1) + ' of ' + jobs.length);
+    $('#job-n-of-n').text('job ' + (job.index + 1) + ' of ' + jobs.length);
   } else {
-    $('.job-n-of-n', props).text('');
+    $('#job-n-of-n').text('');
   }
-  $('.InnerRight').show();
 }
 
 /**
@@ -102,26 +98,25 @@ function value(value) {
 
 function loadTable() {
   jobs.forEach(function(job) {
-      var rowClass = ''
-      if (job.index % 2 != 0) {
-          rowClass = 'odd'
-      }
-      $('.job-summary tr:last').after(
-         '<tr id="row-num-' + job.index + '" class="' + rowClass + '">'+
-          '<td class="row-job-num">' + (job.index+1) + '</td>' +
-          '<td class="row-job-id"><a target="_blank" class="job-jt-url"></a></td>' +
-          '<td class="row-job-status"/>' +
-          '<td class="row-job-alias"/>' +
-          '<td class="row-job-feature"/>' +
-          '<td class="row-job-mappers"/>' +
-          '<td class="row-job-reducers"/>' +
-         '</tr>'
-      );
-      $('#row-num-' + job.index).bind('click', function() {
-        selectJob(this.job);
-      });
-
-      updateTableRow(job);
+    var rowClass = ''
+    if (job.index % 2 != 0) {
+      rowClass = 'odd'
+    }
+    $('#job-summary tr:last').after(
+      '<tr id="row-num-' + job.index + '">'+
+        '<td class="row-job-num">' + (job.index + 1) + '</td>' +
+        '<td class="row-job-id"><a class="job-jt-url" target="_blank"></a></td>' +
+        '<td class="row-job-status"/>' +
+        '<td class="row-job-alias"/>' +
+        '<td class="row-job-feature"/>' +
+        '<td class="row-job-mappers"/>' +
+        '<td class="row-job-reducers"/>' +
+        '</tr>'
+    );
+    $('#row-num-' + job.index).bind('click', function() {
+      selectJob(this.job);
+    });
+    updateTableRow(job);
   });
 }
 
@@ -531,10 +526,10 @@ function refreshDisplay() {
     .transition()
     .style("stroke", chordStroke)
     .style("fill", chordFill);
+
   /*
   // spin svg to selected job
   var a = (-ga * jobSelected.index) * 180 / Math.PI + 360;
-  info("Angle is '" + a + "'");
   svg.transition()
     .duration(1000)
     .attr("transform", "rotate(" + a + ")");

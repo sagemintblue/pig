@@ -38,6 +38,12 @@
       <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="#">Iris</a>
+          <ul class="nav">
+            <li class="active">
+              <a href="/">Home</a>
+            </li>
+            <li><a href="go/iris">About</a></li>
+          </ul>
         </div>
       </div>
     </div>
@@ -54,44 +60,39 @@
       <div class="row">
         <div class="span6" id="chart"></div>
         <div class="span6">
-          <table class="job-prop-list table" summary="Job Status">
+          <table id="job-props" class="table">
             <thead>
               <tr>
-                <th scope="col" class="rounded-head-left">Property</th>
-                <th scope="col" class="rounded-head-right">Value</th>
+                <th>Property</th>
+                <th>Value</th>
               </tr>
             </thead>
-            <tfoot>
-              <tr>
-                <td class="rounded-foot-left">&nbsp;</td>
-                <td class="rounded-foot-right job-n-of-n">&nbsp;</td>
-              </tr>
-            </tfoot>
             <tbody>
-              <tr><td>Job ID</td><td><a class="job-jt-url" target="_blank"></a></td></tr>
-              <tr><td>Name</td><td class="job-scope"></td></tr>
-              <tr><td>Aliases</td><td class="job-aliases"></td></tr>
-              <tr><td>Features</td><td class="job-features"></td></tr>
-              <tr><td>Status</td><td class="job-status"></td></tr>
-              <tr><td>Mappers</td><td class="job-mapper-status"></td></tr>
-              <tr><td>Reducers</td><td class="job-reducer-status"></td></tr>
+              <tr><td>Job ID</td><td><a id="job-jt-url" target="_blank"></a></td></tr>
+              <tr><td>Name</td><td id="job-scope"></td></tr>
+              <tr><td>Aliases</td><td id="job-aliases"></td></tr>
+              <tr><td>Features</td><td id="job-features"></td></tr>
+              <tr><td>Status</td><td id="job-status"></td></tr>
+              <tr><td>Mappers</td><td id="job-mapper-status"></td></tr>
+              <tr><td>Reducers</td><td id="job-reducer-status"></td></tr>
             </tbody>
+            <caption id="job-n-of-n"></caption>
           </table>
         </div>
       </div>
 
       <div class="row">
         <div class="span12">
-          <table class="job-summary table" summary="Job Summary">
+          <table id="job-summary" class="table table-striped">
             <thead>
               <tr>
-                <th scope="col"></th>
-                <th scope="col">Job ID</th>
-                <th scope="col">Status</th>
-                <th scope="col">Alias</th>
-                <th scope="col">Feature</th>
-                <th scope="col">Mappers</th>
-                <th scope="col">Reducers</th>
+                <th></th>
+                <th>Job ID</th>
+                <th>Status</th>
+                <th>Alias</th>
+                <th>Feature</th>
+                <th>Mappers</th>
+                <th>Reducers</th>
               </tr>
             </thead>
             <tbody>
