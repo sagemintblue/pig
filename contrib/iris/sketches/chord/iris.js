@@ -55,7 +55,7 @@ function displayError(msg) {
  */
 function loadDag() {
   // load sample data and initialize
-  d3.json("pig-dag.json", function(data) {
+  d3.json("small-dag.json", function(data) {
     if (data == null) {
       alert("Failed to load sample data");
       return;
@@ -150,7 +150,7 @@ function buildTaskString(total, progress) {
  * Polls back end for new events.
  */
 function pollEvents() {
-  d3.json("pig-events.json?lastEventId=" + lastProcessedEventId, function(events) {
+  d3.json("event-list.json?lastEventId=" + lastProcessedEventId, function(events) {
     // test for error
     if (events == null) {
       displayError("No events found")
