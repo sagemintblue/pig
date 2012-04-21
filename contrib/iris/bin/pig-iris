@@ -4,6 +4,7 @@ function log() { echo $@ >&2; }
 function die() { log $@; exit 1; }
 
 # configure environment
+export JAVA_HOME=/usr
 export PIG_HOME="${PIG_HOME:-$(dirname $0)/../../..}"
 export PIG_CLASSPATH=$(ls "$PIG_HOME"/pig-*.jar) \
     || die "Failed to find pig jar in path '$PIG_HOME'"
