@@ -15,3 +15,11 @@ path.chord {
 #job-summary {
     width: 100%;
 }
+
+.row-job-mappers {
+    white-space: nowrap;
+}
+
+.row-job-reducers {
+    white-space: nowrap;
+}
