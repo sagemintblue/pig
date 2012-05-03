@@ -81,7 +81,7 @@ sub replaceParameters
     $cmd =~ s/:DBNAME:/$testCmd->{'dbdb'}/g;
 #    $cmd =~ s/:LOCALINPATH:/$testCmd->{'localinpathbase'}/g;
 #    $cmd =~ s/:LOCALOUTPATH:/$testCmd->{'localoutpathbase'}/g;
-#    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
+    $cmd =~ s/:LOCALTESTPATH:/$testCmd->{'localpathbase'}/g;
     $cmd =~ s/:BMPATH:/$testCmd->{'benchmarkPath'}/g;
     $cmd =~ s/:TMP:/$testCmd->{'tmpPath'}/g;
     $cmd =~ s/:HDFSTMP:/tmp\/$testCmd->{'runid'}/g;
@@ -345,6 +345,7 @@ sub getPigCmd($$$)
 
     # set the PIG_CLASSPATH environment variable
 	my $pcp .= $testCmd->{'jythonjar'} if (defined($testCmd->{'jythonjar'}));
+    $pcp .= ":" . $testCmd->{'jrubyjar'} if (defined($testCmd->{'jrubyjar'}));
     $pcp .= ":" . $testCmd->{'classpath'} if (defined($testCmd->{'classpath'}));
 
     # Set it in our current environment.  It will get inherited by the IPC::Run
@@ -800,8 +801,6 @@ sub comparePig
 sub compareSingleOutput
 {
     my ($self, $testResult, $testOutput, $benchmarkOutput, $log) = @_;
-
-print $log "testResult: $testResult testOutput: $testOutput benchmarkOutput: $benchmarkOutput\n";
 
     # cksum the the two files to see if they are the same
     my ($testChksm, $benchmarkChksm);

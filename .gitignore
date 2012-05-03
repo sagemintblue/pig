@@ -6,3 +6,6 @@ target/
 ivy/*.jar
 pig.jar
 pig-withouthadoop.jar
+*.iml
+*.ipr
+*.iws
