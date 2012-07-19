@@ -17,6 +17,8 @@
  */
 package org.apache.pig.test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -251,7 +253,7 @@ public class TestLogicalPlanBuilder {
         Operator lo = listOp.get(0);
         
         if (lo instanceof LOCogroup) {
-            Assert.assertEquals( 1, ((LOCogroup) lo).getRequestedParallelisam() );//Local mode, paraallel = 1
+            Assert.assertEquals( 1, ((LOCogroup) lo).getRequestedParallelism() );//Local mode, paraallel = 1
         } else {
             Assert.fail("Error: Unexpected Parse Tree output");
         }  
@@ -1853,7 +1855,20 @@ public class TestLogicalPlanBuilder {
         Operator store = lp.getSinks().get(0);
         LOForEach foreach = (LOForEach) lp.getPredecessors(store).get(0);
         String s = foreach.getSchema().toString(false);
-        Assert.assertTrue( s.equals("bag_of_tokenTuples:bag{tuple_of_tokens:tuple(token:chararray)}"));
+        Assert.assertTrue( s.equals("bag_of_tokenTuples_from_f1:bag{tuple_of_tokens:tuple(token:chararray)}"));
+    }
+    
+    @Test
+    public void testTokenizeSchema2()  throws Exception {
+        String query = "a = load 'one' as (f1: chararray, f2: chararray);" + 
+        "b = foreach a generate TOKENIZE(f1), TOKENIZE(f2);" +
+        "store b into 'output';";
+        LogicalPlan lp = buildPlan(query);
+        Operator store = lp.getSinks().get(0);
+        LOForEach foreach = (LOForEach) lp.getPredecessors(store).get(0);
+        String s = foreach.getSchema().toString(false);
+        assertEquals(s, "bag_of_tokenTuples_from_f1:bag{tuple_of_tokens:tuple(token:chararray)}"
+        		+",bag_of_tokenTuples_from_f2:bag{tuple_of_tokens:tuple(token:chararray)}");
     }
 
     @Test
@@ -2069,14 +2084,17 @@ public class TestLogicalPlanBuilder {
         LogicalPlan plan = buildPlan( query );
         Operator op = plan.getSinks().get(0);
         LOLoad load = (LOLoad)plan.getPredecessors(op).get(0);
-        Assert.assertTrue(((PigStorageWithSchema)(load).getLoadFunc()).getUDFContextSignature().equals("a"));
+        // the signature is now a unique string of the format "{alias}_{scope id}-{id}" example: "a_12-0"
+        String udfContextSignature = ((PigStorageWithSchema)(load).getLoadFunc()).getUDFContextSignature();
+        Assert.assertTrue(udfContextSignature, udfContextSignature.matches("a_[0-9]*-[0-9]*"));
         
         query = " b = load '1.txt' using org.apache.pig.test.PigStorageWithSchema();" +
                 "store b into 'output';";
         plan = buildPlan(query);
         op = plan.getSinks().get(0);
         load = (LOLoad)plan.getPredecessors(op).get(0);
-        Assert.assertTrue(((PigStorageWithSchema)(load).getLoadFunc()).getUDFContextSignature().equals("b"));
+        udfContextSignature = ((PigStorageWithSchema)(load).getLoadFunc()).getUDFContextSignature();
+        Assert.assertTrue(udfContextSignature, udfContextSignature.matches("b_[0-9]*-[0-9]*"));
     }
     
     @Test
