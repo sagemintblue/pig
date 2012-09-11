@@ -22,18 +22,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.net.URI;
 import java.util.List;
-import java.util.Locale;
 import java.util.Queue;
-
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
-import javax.tools.ToolProvider;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
@@ -581,6 +571,21 @@ public class SchemaTupleClassGenerator {
         }
     }
 
+    static class IsSpecificSchemaTuple extends TypeInFunctionStringOut {
+        private int id;
+
+        public IsSpecificSchemaTuple(int id) {
+            this.id = id;
+        }
+
+        public void prepare() {
+            add("@Override");
+            add("public boolean isSpecificSchemaTuple(Object o) {");
+            add("    return o instanceof SchemaTuple_" + id + ";");
+            add("}");
+        }
+    }
+
     //this has to write the null state of all the fields, not just the null bytes, though those
     //will have to be reconstructed
     static class WriteNullsString extends TypeInFunctionStringOut {
@@ -718,17 +723,25 @@ public class SchemaTupleClassGenerator {
             } else if (isLong() || isDouble()) {
                 size += 8;
             } else if (isBytearray()) {
-                s += "(pos_"+fieldPos+" == null ? 8 : SizeUtil.roundToEight(12 + pos_"+fieldPos+".length) * 8) + ";
-            } else if (isString()) {
-                s += "(pos_"+fieldPos+" == null ? 8 : SizeUtil.getPigObjMemSize(pos_"+fieldPos+")) + ";
+                size += 8; //the ptr
+                s += "(pos_"+fieldPos+" == null ? 0 : SizeUtil.roundToEight(12 + pos_"+fieldPos+".length) * 8) + ";
             } else if (isBoolean()) {
                 if (booleans++ % 8 == 0) {
                     size++; //accounts for the byte used to store boolean values
                 }
+            } else if (isDateTime()) {
+                size += 10; // 8 for long and 2 for short
             } else if (isBag()) {
-                //TODO IMPLEMENT
-            } else {
+                size += 8; //the ptr
+                s += "(pos_"+fieldPos+" == null ? 0 : pos_"+fieldPos+".getMemorySize()) + ";
+            } else if (isMap() || isString()) {
+                size += 8; //the ptr
+                s += "(pos_"+fieldPos+" == null ? 0 : SizeUtil.getPigObjMemSize(pos_"+fieldPos+")) + ";
+            } else if (isTuple()) {
+                size += 8; //the ptr
                 s += "(pos_"+fieldPos+" == null ? 8 : pos_"+fieldPos+".getMemorySize()) + ";
+            } else {
+                throw new RuntimeException("Unsupported type found: " + fs);
             }
 
             if (isPrimitive() && primitives++ % 8 == 0) {
@@ -753,10 +766,13 @@ public class SchemaTupleClassGenerator {
             case (DataType.FLOAT): add("    return 0.0f;"); break;
             case (DataType.DOUBLE): add("    return 0.0;"); break;
             case (DataType.BOOLEAN): add("    return true;"); break;
+            case (DataType.DATETIME): add("    return new DateTime();"); break;
             case (DataType.BYTEARRAY): add("    return (byte[])null;"); break;
             case (DataType.CHARARRAY): add("    return (String)null;"); break;
             case (DataType.TUPLE): add("    return (Tuple)null;"); break;
             case (DataType.BAG): add("    return (DataBag)null;"); break;
+            case (DataType.MAP): add("    return (Map<String,Object>)null;"); break;
+            default: throw new RuntimeException("Unsupported type");
             }
             add("}");
             addBreak();
@@ -1011,6 +1027,7 @@ public class SchemaTupleClassGenerator {
             listOfFutureMethods.add(new CompareToString(id));
             listOfFutureMethods.add(new CompareToSpecificString(id, appendable));
             listOfFutureMethods.add(new SetEqualToSchemaTupleString(id));
+            listOfFutureMethods.add(new IsSpecificSchemaTuple(id));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.INTEGER));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.LONG));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.FLOAT));
@@ -1018,8 +1035,10 @@ public class SchemaTupleClassGenerator {
             listOfFutureMethods.add(new TypeAwareSetString(DataType.BYTEARRAY));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.CHARARRAY));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.BOOLEAN));
+            listOfFutureMethods.add(new TypeAwareSetString(DataType.DATETIME));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.TUPLE));
             listOfFutureMethods.add(new TypeAwareSetString(DataType.BAG));
+            listOfFutureMethods.add(new TypeAwareSetString(DataType.MAP));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.INTEGER));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.LONG));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.FLOAT));
@@ -1027,8 +1046,10 @@ public class SchemaTupleClassGenerator {
             listOfFutureMethods.add(new TypeAwareGetString(DataType.BYTEARRAY));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.CHARARRAY));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.BOOLEAN));
+            listOfFutureMethods.add(new TypeAwareGetString(DataType.DATETIME));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.TUPLE));
             listOfFutureMethods.add(new TypeAwareGetString(DataType.BAG));
+            listOfFutureMethods.add(new TypeAwareGetString(DataType.MAP));
             listOfFutureMethods.add(new ListSetString());
 
             for (TypeInFunctionStringOut t : listOfFutureMethods) {
@@ -1045,12 +1066,15 @@ public class SchemaTupleClassGenerator {
             StringBuilder head =
                 new StringBuilder()
                     .append("import java.util.List;\n")
+                    .append("import java.util.Map;\n")
                     .append("import java.util.Iterator;\n")
                     .append("import java.io.DataOutput;\n")
                     .append("import java.io.DataInput;\n")
                     .append("import java.io.IOException;\n")
                     .append("\n")
                     .append("import com.google.common.collect.Lists;\n")
+                    .append("\n")
+                    .append("import org.joda.time.DateTime;")
                     .append("\n")
                     .append("import org.apache.pig.data.DataType;\n")
                     .append("import org.apache.pig.data.DataBag;\n")
@@ -1150,10 +1174,6 @@ public class SchemaTupleClassGenerator {
         public void prepareProcess(Schema.FieldSchema fs) {
             type = fs.type;
 
-            if (type==DataType.MAP) {
-                throw new RuntimeException("Map currently not supported by SchemaTuple");
-            }
-
             process(fieldPos, fs);
             fieldPos++;
         }
@@ -1172,6 +1192,10 @@ public class SchemaTupleClassGenerator {
 
         public boolean isDouble() {
             return type == DataType.DOUBLE;
+        }
+
+        public boolean isDateTime() {
+            return type == DataType.DATETIME;
         }
 
         public boolean isPrimitive() {
@@ -1198,6 +1222,10 @@ public class SchemaTupleClassGenerator {
             return type == DataType.BAG;
         }
 
+        public boolean isMap() {
+            return type == DataType.MAP;
+        }
+
         public boolean isObject() {
             return !isPrimitive();
         }
@@ -1215,8 +1243,10 @@ public class SchemaTupleClassGenerator {
                 case (DataType.BYTEARRAY): return "byte[]";
                 case (DataType.CHARARRAY): return "String";
                 case (DataType.BOOLEAN): return "boolean";
+                case (DataType.DATETIME): return "DateTime";
                 case (DataType.TUPLE): return "Tuple";
                 case (DataType.BAG): return "DataBag";
+                case (DataType.MAP): return "Map";
                 default: throw new RuntimeException("Can't return String for given type " + DataType.findTypeName(type));
             }
         }

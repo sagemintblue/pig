@@ -21,8 +21,71 @@ Pig Change Log
 Trunk (unreleased changes)
 
 INCOMPATIBLE CHANGES
+PIG-1891 Enable StoreFunc to make intelligent decision based on job success or failure (initialcontext via gates)
 
 IMPROVEMENTS
+
+PIG-2901: Errors and lacks in document "Pig Latin Basics" (miyakawataku via billgraham)
+
+PIG-2905: Improve documentation around REPLACE (cheolsoo via billgraham)
+
+PIG-2882: Use Deque instead of Stack (mkhadikov via dvryaboy)
+
+PIG-2781: LOSort isEqual method (xalan via dvryaboy)
+
+PIG-2835: Optimizing the convertion from bytes to Integer/Long (jay23jack via dvryaboy)
+
+PIG-2886: Add Scan TimeRange to HBaseStorage (ted.m via dvryaboy)
+
+PIG-2895: jodatime jar missing in pig-withouthadoop.jar  (thejas)
+
+PIG-2888: Improve performance of POPartialAgg (dvryaboy)
+
+PIG-2708: split MiniCluster based tests out of org.apache.pig.test.TestInputOutputFileValidator (analog.sony via daijy)
+
+PIG-2890: Revert PIG-2578 (dvryaboy)
+
+PIG-2850: Pig should support loading macro files as resources stored in JAR files (matterhayes via dvryaboy)
+
+PIG-1314: Add DateTime Support to Pig (zjshen via thejas)
+
+PIG-2785: NoClassDefFoundError after upgrading to pig 0.10.0 from 0.9.0 (matterhayes via sms)
+
+PIG-2556: CSVExcelStorage load: quoted field with newline as first character sees newline as record end (tivv via dvryaboy)
+
+PIG-2875: Add recursive record support to AvroStorage (cheolsoo via sms)
+
+PIG-2662: skew join does not honor its config parameters (rajesh.balamohan via thejas)
+
+PIG-2871: Refactor signature for PigReducerEstimator (billgraham)
+
+PIG-2851: Add flag to ant to run tests with a debugger port (billgraham)
+
+PIG-2862: Hardcode certain tuple lengths into the TUPLE BinInterSedes byte identifier (jcoveney)
+
+PIG-2855: Provide a method to measure time spent in UDFs (dvryaboy)
+
+PIG-2837: AvroStorage throws StackOverFlowError (cheolsoo via sms)
+
+PIG-2856: AvroStorage doesn't load files in the directories when a glob pattern matches both files and directories. (cheolsoo via sms)
+
+PIG-2569: Fix org.apache.pig.test.TestInvoker.testSpeed (aklochkov via dvryaboy)
+
+PIG-2858: Improve PlanHelper to allow finding any PhysicalOperator in a plan (dvryaboy)
+
+PIG-2854: AvroStorage doesn't work with Avro 1.7.1 (cheolsoo via sms)
+
+PIG-2779: Refactoring the code for setting number of reducers (jay23jack via billgraham)
+
+PIG-2765: Implementing RollupDimensions UDF and adding ROLLUP clause in CUBE operator (prasanth_j via dvryaboy)
+
+PIG-2814: Fix issues with Sample operator documentation (prasanth_j via dvryaboy)
+
+PIG-2817: Documentation for Groovy UDFs (herberts via julien)
+
+PIG-2492: AvroStorage should recognize globs and commas (cheolsoo via sms)
+
+PIG-2706: Add clear to list of grunt commands (xalan via azaroth)
 
 PIG-2823: TestPigContext.testImportList() does not pass if another javac in on the PATH (julien)
 
@@ -204,6 +267,36 @@ OPTIMIZATIONS
 
 BUG FIXES
 
+PIG-2896:  Pig does not fail anymore if two macros are declared with the same name (julien)
+
+PIG-2848: TestBuiltInBagToTupleOrString fails now that mock.Storage enforces not overwriting output (julien)
+
+PIG-2884: JobControlCompiler mis-logs after reducer estimation (billgraham)
+
+PIG-2876: Bump up Xerces version (jcoveney)
+
+PIG-2866: PigServer fails with macros without a script file (billgraham)
+
+PIG-2860: [piggybank] TestAvroStorageUtils.testGetConcretePathFromGlob fails on some version of hadoop (cheolsoo via jcoveney)
+
+PIG-2861: PlanHelper imports org.python.google.common.collect.Lists instead of org.google.common.collect.Lists (jcoveney)
+
+PIG-2849: Errors in document Getting Started (miyakawataku via billgraham)
+
+PIG-2843: Typo in Documentation (eric59 via billgraham)
+
+PIG-2841: Inconsistent URL in Docs (eric59 via billgraham)
+
+PIG-2740: get rid of "java[77427:1a03] Unable to load realm info from SCDynamicStore" log lines when running pig tests (julien)
+
+PIG-2839: mock.Storage overwrites output with the last relation written when storing UNION (julien)
+
+PIG-2840: Fix SchemaTuple bugs (jcoveney)
+
+PIG-2842: TestNewPlanOperatorPlan fails when new Configuration() picks up a previous minicluster conf file (julien)
+
+PIG-2827: Unwrap exception swallowing in TOP (haitao.yao via jcoveney)
+
 PIG-2825: StoreFunc signature setting in LogicalPlan broken (jcoveney)
 
 PIG-2815: class loader management in PigContext (rangadi via jcoveney)
@@ -238,21 +331,21 @@ PIG-2709: PigAvroRecordReader should specify which file has a problem when throw
 
 PIG-2640: Usage message gives wrong information for Pig additional jars (prkommireddi via daijy)
 
-	PIG-2652:  Skew join and order by don't trigger reducer estimation (dvryaboy)
+PIG-2652:  Skew join and order by don't trigger reducer estimation (dvryaboy)
 
 PIG-2616: JobControlCompiler.getInputSizeFromLoader must handle exceptions from LoadFunc.getStatistics (billgraham)
 
-	PIG-2644: Piggybank's HadoopJobHistoryLoader throws NPE when reading broken history file (herberts via daijy)
+PIG-2644: Piggybank's HadoopJobHistoryLoader throws NPE when reading broken history file (herberts via daijy)
 
 PIG-2627: Custom partitioner not set when POSplit is involved in Plan (aniket486 via daijy)
 
 PIG-2596: Jython UDF does not handle boolean output (aniket486 via daijy)
 
-	PIG-2649: org.apache.pig.parser.ParserValidationException does not expose the cause exception
+PIG-2649: org.apache.pig.parser.ParserValidationException does not expose the cause exception
 
-	PIG-2540: [piggybank] AvroStorage can't read schema on amazon s3 in elastic mapreduce (rjurney via jcoveney)
+PIG-2540: [piggybank] AvroStorage can't read schema on amazon s3 in elastic mapreduce (rjurney via jcoveney)
 
-	PIG-2618: e2e local fails to build
+PIG-2618: e2e local fails to build
 
 PIG-2608: Typo in PigStorage documentation for source tagging (prkommireddi via daijy)
 
@@ -272,9 +365,9 @@ PIG-2491: Pig docs still mention hadoop-site.xml (daijy)
 
 PIG-2504: Incorrect sample provided for REGEX_EXTRACT (prkommireddi via daijy)
 
-	PIG-2502: Make "hcat.bin" configurable in e2e test (daijy)
+PIG-2502: Make "hcat.bin" configurable in e2e test (daijy)
 
-	PIG-2501: Changes needed to contrib/piggybank/java/build.xml in order to build piggybank.jar with Hadoop 0.23
+PIG-2501: Changes needed to contrib/piggybank/java/build.xml in order to build piggybank.jar with Hadoop 0.23
 (ekoontz via daijy)
 
 PIG-2499: Pig TestGrunt.testShellCommand occasionally fails (tomwhite via daijy)
@@ -446,6 +539,12 @@ PIG-2011: Speed up TestTypedMap.java (dvryaboy)
 PIG-2228: support partial aggregation in map task (thejas)
 
 BUG FIXES
+
+PIG-2821: HBaseStorage should work with secure hbase (rohini via daijy)
+
+PIG-2859: Fix few e2e test failures (rohini via daijy)
+
+PIG-2729: Macro expansion does not use pig.import.search.path - UnitTest borked (johannesch via daijy)
 
 PIG-2783: Fix Iterator_1 e2e test for Hadoop 23 (rohini via daijy)
 
@@ -641,6 +740,8 @@ inclusion of test classes (cos via gates)
 Release 0.9.3 - Unreleased
 
 BUG FIXES
+
+PIG-2912: Pig should clone JobConf while creating JobContextImpl and TaskAttemptContextImpl in Hadoop23 (rohini via daijy)
 
 PIG-2775: Register jar does not goes to classpath in some cases (daijy)
 

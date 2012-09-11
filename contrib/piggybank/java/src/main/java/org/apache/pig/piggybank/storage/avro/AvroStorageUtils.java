@@ -5,9 +5,9 @@
  * licenses this file to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -101,7 +101,7 @@ public class AvroStorageUtils {
       Configuration conf = job.getConfiguration();
       FileSystem fs = FileSystem.get(conf);
       HashSet<Path> paths = new  HashSet<Path>();
-      if (getAllSubDirs(URI.create(pathString), job, paths))
+      if (getAllSubDirs(new Path(pathString), job, paths))
       {
         paths.addAll(Arrays.asList(FileInputFormat.getInputPaths(job)));
         FileInputFormat.setInputPaths(job, paths.toArray(new Path[0]));
@@ -113,33 +113,43 @@ public class AvroStorageUtils {
 
     /**
      * Adds all non-hidden directories and subdirectories to set param
-     * 
+     *
      * @throws IOException
      */
-    static boolean getAllSubDirs(URI location, Job job, Set<Path> paths) throws IOException {
-        FileSystem fs = FileSystem.get(location, job.getConfiguration());
-        Path path = new Path(location.getPath());
-  		if (PATH_FILTER.accept(path)) {
-  			try {
-  				FileStatus file = fs.getFileStatus(path);
-  				if (file.isDir()) {
-  					for (FileStatus sub : fs.listStatus(path)) {
-                        getAllSubDirs(sub.getPath().toUri(), job, paths);
-  					}
-  				} else {
-  					AvroStorageLog.details("Add input file:" + file);
-  					paths.add(file.getPath());
-  				}
-  			} catch (FileNotFoundException e) {
-                AvroStorageLog.details("getAllSubDirs: RETURN FALSE; Input path does not exist: " + path);
-  				AvroStorageLog.details("Input path does not exist: " + path);
-  				return false;
-  			}
-  			return true;
-  		}
-  		return false;
-  	}
-     
+    static boolean getAllSubDirs(Path path, Job job, Set<Path> paths) throws IOException {
+        FileSystem fs = FileSystem.get(path.toUri(), job.getConfiguration());
+        FileStatus[] matchedFiles = fs.globStatus(path, PATH_FILTER);
+        if (matchedFiles == null || matchedFiles.length == 0) {
+            return false;
+        }
+        for (FileStatus file : matchedFiles) {
+            if (file.isDir()) {
+                for (FileStatus sub : fs.listStatus(file.getPath())) {
+                    getAllSubDirs(sub.getPath(), job, paths);
+                }
+            } else {
+                AvroStorageLog.details("Add input file:" + file);
+                paths.add(file.getPath());
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Return the first path that matches the glob pattern in the file system.
+     *
+     * @throws IOException
+     */
+    public static Path getConcretePathFromGlob(String pattern, Job job) throws IOException {
+        Path path = new Path(pattern);
+        FileSystem fs = FileSystem.get(path.toUri(), job.getConfiguration());
+        FileStatus[] matchedFiles = fs.globStatus(path, PATH_FILTER);
+        if (matchedFiles == null || matchedFiles.length == 0) {
+            return null;
+        }
+        return matchedFiles[0].getPath();
+    }
+
     /** check whether there is NO directory in the input file (status) list*/
     public static boolean noDir(FileStatus [] ss) {
         for (FileStatus s : ss) {
@@ -148,15 +158,15 @@ public class AvroStorageUtils {
         }
         return true;
     }
-    
-    /** get last file of a hdfs path if it is  a directory; 
+
+    /** get last file of a hdfs path if it is  a directory;
      *   or return the file itself if path is a file
      */
     public static Path getLast(String path, FileSystem fs) throws IOException {
         return getLast(new Path(path), fs);
     }
 
-    /** get last file of a hdfs path if it is  a directory; 
+    /** get last file of a hdfs path if it is  a directory;
      *   or return the file itself if path is a file
      */
     public static Path getLast(Path path, FileSystem fs) throws IOException {
@@ -172,7 +182,7 @@ public class AvroStorageUtils {
     }
 
     /**
-     * Wrap an avro schema as a nullable union if needed. 
+     * Wrap an avro schema as a nullable union if needed.
      * For instance, wrap schema "int" as ["null", "int"]
      */
     public static Schema wrapAsUnion(Schema schema, boolean nullable) {
@@ -194,21 +204,21 @@ public class AvroStorageUtils {
         Set<String> set = new HashSet<String> ();
         return containsRecursiveRecord(s, set);
     }
-  
+
     /**
      * Called by {@link #containsRecursiveRecord(Schema)} and it recursively checks
-     * whether the input schema contains recursive records. 
+     * whether the input schema contains recursive records.
      */
     protected static boolean containsRecursiveRecord(Schema s, Set<String> definedRecordNames) {
-        
+
         /* if it is a record, check itself and all fields*/
         if (s.getType().equals(Schema.Type.RECORD)) {
             String name = s.getName();
             if (definedRecordNames.contains(name)) return true;
-            
+
             /* add its own name into defined record set*/
             definedRecordNames.add(s.getName());
-            
+
             /* check all fields */
             List<Field> fields = s.getFields();
             for (Field field: fields) {
@@ -216,25 +226,25 @@ public class AvroStorageUtils {
                 if (containsRecursiveRecord(fs, definedRecordNames))
                     return true;
             }
-            
+
             /* remove its own name from the name set */
             definedRecordNames.remove(s.getName());
 
             return false;
         }
-        
+
         /* if it is an array, check its element type */
         else if (s.getType().equals(Schema.Type.ARRAY)) {
             Schema fs = s.getElementType();
             return containsRecursiveRecord(fs, definedRecordNames);
         }
-        
+
         /*if it is a map, check its value type */
         else if (s.getType().equals(Schema.Type.MAP)) {
             Schema vs = s.getValueType();
             return containsRecursiveRecord(vs, definedRecordNames);
         }
-        
+
         /* if it is a union, check all possible types */
         else if (s.getType().equals(Schema.Type.UNION)) {
             List<Schema> types = s.getTypes();
@@ -244,57 +254,84 @@ public class AvroStorageUtils {
             }
             return false;
         }
-        
+
         /* return false for other cases */
         else {
             return false;
         }
     }
-    
+
     /** determine whether the input schema contains generic unions */
     public static boolean containsGenericUnion(Schema s) {
-             
+        /* initialize empty set of visited records */
+        Set<Schema> set = new HashSet<Schema> ();
+        return containsGenericUnion(s, set);
+    }
+
+    /**
+     * Called by {@link #containsGenericUnion(Schema)} and it recursively checks
+     * whether the input schema contains generic unions.
+     */
+    protected static boolean containsGenericUnion(Schema s, Set<Schema> visitedRecords) {
+
         /* if it is a record, check all fields*/
         if (s.getType().equals(Schema.Type.RECORD)) {
+
+            /* add its own name into visited record set*/
+            visitedRecords.add(s);
+
+            /* check all fields */
             List<Field> fields = s.getFields();
             for (Field field: fields) {
                 Schema fs = field.schema();
-                if (containsGenericUnion(fs))
-                    return true;
+                if (!visitedRecords.contains(fs)) {
+                    if (containsGenericUnion(fs, visitedRecords)) {
+                        return true;
+                    }
+                }
             }
             return false;
         }
-        
+
         /* if it is an array, check its element type */
         else if (s.getType().equals(Schema.Type.ARRAY)) {
             Schema fs = s.getElementType();
-            return  containsGenericUnion(fs) ;
+            if (!visitedRecords.contains(fs)) {
+                return containsGenericUnion(fs, visitedRecords);
+            }
+            return false;
         }
-        
+
         /*if it is a map, check its value type */
         else if (s.getType().equals(Schema.Type.MAP)) {
             Schema vs = s.getValueType();
-            return containsGenericUnion(vs) ;
+            if (!visitedRecords.contains(vs)) {
+                return containsGenericUnion(vs, visitedRecords);
+            }
+            return false;
         }
-        
+
         /* if it is a union, check all possible types and itself */
         else if (s.getType().equals(Schema.Type.UNION)) {
             List<Schema> types = s.getTypes();
             for (Schema type: types) {
-                if (containsGenericUnion(type) )
-                    return true;
+                if (!visitedRecords.contains(type)) {
+                    if (containsGenericUnion(type, visitedRecords)) {
+                        return true;
+                    }
+                }
             }
             /* check whether itself is acceptable (null-union) */
-            return  ! isAcceptableUnion (s);
+            return !isAcceptableUnion(s);
         }
-        
+
         /* return false for other cases */
         else {
             return false;
         }
     }
-    
-    /** determine whether a union is a nullable union; 
+
+    /** determine whether a union is a nullable union;
      * note that this function doesn't check containing
      * types of the input union recursively. */
     public static boolean isAcceptableUnion(Schema in) {
@@ -337,22 +374,22 @@ public class AvroStorageUtils {
 
     /** extract schema from a nullable union */
     public static Schema getAcceptedType(Schema in) {
-        if (!isAcceptableUnion(in)) 
+        if (!isAcceptableUnion(in))
             throw new RuntimeException("Cannot call this function on a unacceptable union");
-    
+
         List<Schema> types = in.getTypes();
         switch (types.size()) {
-        case 0: 
+        case 0:
             return null; /*union with no type*/
-        case 1: 
+        case 1:
             return types.get(0); /*union with one type*/
         case 2:
             return  (types.get(0).getType().equals(Schema.Type.NULL))
-                        ? types.get(1) 
+                        ? types.get(1)
                         : types.get(0);
         default:
             return null;
-        } 
+        }
     }
 
 }

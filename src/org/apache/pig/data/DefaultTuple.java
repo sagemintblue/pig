@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -36,7 +37,6 @@ import org.apache.pig.PigException;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.impl.io.NullableTuple;
 import org.apache.pig.impl.util.ObjectSerializer;
-import org.apache.pig.impl.util.TupleFormat;
 
 /**
  * A default implementation of Tuple. This class will be created by the DefaultTupleFactory.
@@ -90,18 +90,6 @@ public class DefaultTuple extends AbstractTuple {
      */
     DefaultTuple(List<Object> c, int junk) {
         mFields = c;
-    }
-
-    /**
-     * Make this tuple reference the contents of another. This method does not copy the underlying data. It maintains
-     * references to the data from the original tuple (and possibly even to the data structure holding the data).
-     * 
-     * @param t
-     *            Tuple to reference.
-     */
-    @Override
-    public void reference(Tuple t) {
-        mFields = t.getAll();
     }
 
     /**
@@ -335,6 +323,13 @@ public class DefaultTuple extends AbstractTuple {
                             double dv2 = bb2.getDouble();
                             rc = Double.compare(dv1, dv2);
                             break;
+                        case DataType.DATETIME:
+                            long dtv1 = bb1.getLong();
+                            bb1.position(bb1.position() + 2); // move cursor forward without read the timezone bytes
+                            long dtv2 = bb2.getLong();
+                            bb2.position(bb2.position() + 2);
+                            rc = (dtv1 < dtv2 ? -1 : (dtv1 == dtv2 ? 0 : 1));
+                            break;
                         case DataType.BYTEARRAY:
                             int basz1 = bb1.getInt();
                             int basz2 = bb2.getInt();
@@ -458,7 +453,7 @@ public class DefaultTuple extends AbstractTuple {
 
     @Override
     public int hashCode() {
-        int hash = 1;
+        int hash = 17;
         for (Iterator<Object> it = mFields.iterator(); it.hasNext();) {
             Object o = it.next();
             if (o != null) {

@@ -24,6 +24,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.classification.InterfaceAudience;
@@ -51,6 +54,7 @@ import com.google.common.collect.Lists;
 public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTuple implements TypeAwareTuple {
 
     private static final long serialVersionUID = 1L;
+    private static final int ONE_MINUTE = 60000;
     private static final BinInterSedes bis = new BinInterSedes();
 
     @NotImplemented
@@ -104,12 +108,13 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
     @SuppressWarnings("unchecked") //this is ok because we only cast to T after checking
     protected SchemaTuple<T> set(Tuple t, boolean checkType) throws ExecException {
         if (checkType) {
-            if (t.getClass() == getClass()) {
+            if (isSpecificSchemaTuple(t)) {
                 return setSpecific((T)t);
             }
 
-            if (t instanceof SchemaTuple<?>)
+            if (t instanceof SchemaTuple<?>) {
                 return set((SchemaTuple<?>)t, false);
+        }
         }
 
         return set(t.getAll());
@@ -152,6 +157,10 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         bis.writeDatum(out, v, DataType.BAG);
     }
 
+    protected static void write(DataOutput out, Map<String, Object> v) throws IOException {
+        bis.writeDatum(out, v, DataType.MAP);
+    }
+
     protected static void write(DataOutput out, int v) throws IOException {
         SedesHelper.Varint.writeSignedVarInt(v, out);
     }
@@ -166,6 +175,11 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     protected static void write(DataOutput out, double v) throws IOException {
         out.writeDouble(v);
+    }
+
+    protected static void write(DataOutput out, DateTime v) throws IOException {
+        out.writeLong(v.getMillis());
+        out.writeShort(v.getZone().getOffset(v) / ONE_MINUTE);
     }
 
     protected static void write(DataOutput out, byte[] v) throws IOException {
@@ -184,6 +198,11 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return (DataBag) bis.readDatum(in, DataType.BAG);
     }
 
+    @SuppressWarnings("unchecked")
+    protected static Map<String, Object> read(DataInput in, Map<String, Object> v) throws IOException {
+        return (Map<String, Object>) bis.readDatum(in, DataType.MAP);
+    }
+
     protected static int read(DataInput in, int v) throws IOException {
         return SedesHelper.Varint.readSignedVarInt(in);
     }
@@ -198,6 +217,10 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     protected static double read(DataInput in, double v) throws IOException {
         return in.readDouble();
+    }
+
+    protected static DateTime read(DataInput in, DateTime v) throws IOException {
+        return new DateTime(in.readLong(), DateTimeZone.forOffsetMillis(in.readShort() * ONE_MINUTE));
     }
 
     protected static String read(DataInput in, String v) throws IOException {
@@ -236,11 +259,13 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return l;
     }
 
+    public abstract boolean isSpecificSchemaTuple(Object o);
+
     //TODO also need to implement the raw comparator
     @SuppressWarnings("unchecked")
     @Override
     public int compareTo(Object other) {
-        if (getClass() == other.getClass()) {
+        if (isSpecificSchemaTuple(other)) {
             return compareToSpecific((T)other);
         }
 
@@ -249,7 +274,7 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         }
 
         if (other instanceof Tuple) {
-            compareTo((Tuple)other, false);
+            return compareTo((Tuple)other, false);
         }
 
         return DataType.compare(this, other);
@@ -262,7 +287,7 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
     @SuppressWarnings("unchecked")
     protected int compareTo(Tuple t, boolean checkType) {
         if (checkType) {
-            if (getClass() == t.getClass()) {
+            if (isSpecificSchemaTuple(t)) {
                 return compareToSpecific((T)t);
             }
 
@@ -305,7 +330,7 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     @SuppressWarnings("unchecked")
     protected int compareTo(SchemaTuple<?> t, boolean checkType) {
-        if (checkType && getClass() == t.getClass()) {
+        if (checkType && isSpecificSchemaTuple(t)) {
             return compareToSpecific((T)t);
         }
 
@@ -333,6 +358,10 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return unbox((DataBag) t);
     }
 
+    protected Map<String, Object> unbox(Object v, Map<String, Object> t) {
+        return unbox((Map<String, Object>) t);
+    }
+
     protected byte[] unbox(Object v, byte[] t) {
         return unbox((DataByteArray)v);
     }
@@ -357,6 +386,10 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return unbox((Boolean)v);
     }
 
+    protected DateTime unbox(Object v, DateTime t) {
+        return (DateTime)v;
+    }
+
     protected String unbox(Object v, String t) {
         return (String)v;
     }
@@ -366,6 +399,10 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
     }
 
     protected DataBag unbox(DataBag v) {
+        return v;
+    }
+
+    protected Map<String, Object> unbox(Map<String, Object> v) {
         return v;
     }
 
@@ -396,7 +433,15 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return v.booleanValue();
     }
 
+    protected DateTime unbox(DateTime v) {
+        return v;
+    }
+
     protected DataBag box(DataBag v) {
+        return v;
+    }
+
+    protected Map<String, Object> box(Map<String, Object> v) {
         return v;
     }
 
@@ -435,41 +480,53 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return new Boolean(v);
     }
 
+    protected DateTime box(DateTime v) {
+        return v;
+    }
+
     protected int hashCodePiece(int hash, int v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + v;
+        return isNull ? hash : 31 * hash + v;
     }
 
     protected int hashCodePiece(int hash, long v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + (int)(v^(v>>>32));
+        return isNull ? hash : 31 * hash + (int)(v^(v>>>32));
     }
 
     protected int hashCodePiece(int hash, float v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + Float.floatToIntBits(v);
+        return isNull ? hash : 31 * hash + Float.floatToIntBits(v);
     }
 
     protected int hashCodePiece(int hash, double v, boolean isNull) {
         long v2 = Double.doubleToLongBits(v);
-        return isNull ? 0 : 31 * hash + (int)(v2^(v2>>>32));
+        return isNull ? hash : 31 * hash + (int)(v2^(v2>>>32));
     }
 
     protected int hashCodePiece(int hash, boolean v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + (v ? 1231 : 1237);
+        return isNull ? hash : 31 * hash + (v ? 1231 : 1237);
+    }
+
+    protected int hashCodePiece(int hash, DateTime v, boolean isNull) {
+        return isNull ? hash : 31 * hash + v.hashCode();
     }
 
     protected int hashCodePiece(int hash, byte[] v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + DataByteArray.hashCode(v);
+        return isNull ? hash : 31 * hash + DataByteArray.hashCode(v);
     }
 
     protected int hashCodePiece(int hash, String v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + v.hashCode();
+        return isNull ? hash : 31 * hash + v.hashCode();
     }
 
     protected int hashCodePiece(int hash, Tuple v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + v.hashCode();
+        return isNull ? hash : 31 * hash + v.hashCode();
     }
 
     protected int hashCodePiece(int hash, DataBag v, boolean isNull) {
-        return isNull ? 0 : 31 * hash + v.hashCode();
+        return isNull ? hash : 31 * hash + v.hashCode();
+    }
+
+    protected int hashCodePiece(int hash, Map<String, Object> v, boolean isNull) {
+        return isNull ? hash : 31 * hash + v.hashCode();
     }
 
     @Override
@@ -551,6 +608,13 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
     protected abstract void generatedCodeSetBoolean(int fieldNum, boolean val) throws ExecException;
 
     @Override
+    public void setDateTime(int fieldNum, DateTime val) throws ExecException {
+         generatedCodeSetDateTime(fieldNum, val);
+    }
+
+    protected abstract void generatedCodeSetDateTime(int fieldNum, DateTime val) throws ExecException;
+
+    @Override
     public void setString(int fieldNum, String val) throws ExecException {
          generatedCodeSetString(fieldNum, val);
     }
@@ -577,6 +641,13 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
     }
 
     protected abstract void generatedCodeSetDataBag(int fieldNum, DataBag val) throws ExecException;
+
+    @Override
+    public void setMap(int fieldNum, Map<String, Object> val) throws ExecException {
+        generatedCodeSetMap(fieldNum, val);
+    }
+
+    protected abstract void generatedCodeSetMap(int fieldNum, Map<String, Object> val) throws ExecException;
 
     private void errorIfNull(boolean isNull, String type) throws FieldIsNullException {
         if (isNull) {
@@ -609,6 +680,11 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return val;
     }
 
+    protected DateTime returnUnlessNull(boolean isNull, DateTime val) throws FieldIsNullException {
+        errorIfNull(isNull, "DateTime");
+        return val;
+    }
+
     protected Tuple returnUnlessNull(boolean isNull, Tuple val) throws FieldIsNullException {
         errorIfNull(isNull, "Tuple");
         return val;
@@ -626,6 +702,11 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     protected DataBag returnUnlessNull(boolean isNull, DataBag val) throws FieldIsNullException {
         errorIfNull(isNull, "DataBag");
+        return val;
+    }
+
+    protected Map<String, Object> returnUnlessNull(boolean isNull, Map<String, Object> val) throws FieldIsNullException {
+        errorIfNull(isNull, "Map<String,Object>");
         return val;
     }
 
@@ -682,6 +763,17 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     public boolean unboxBoolean(Object val) {
         return ((Boolean)val).booleanValue();
+    }    
+
+    @Override
+    public DateTime getDateTime(int fieldNum) throws ExecException {
+        return generatedCodeGetDateTime(fieldNum);
+    }
+
+    protected abstract DateTime generatedCodeGetDateTime(int fieldNum) throws ExecException;
+
+    public DateTime unboxDateTime(Object val) {
+        return (DateTime)val;
     }
 
     @Override
@@ -727,6 +819,18 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     protected DataBag unboxDataBag(Object val) {
         return (DataBag)val;
+    }
+
+    @Override
+    public Map<String, Object> getMap(int fieldNum) throws ExecException {
+        return generatedCodeGetMap(fieldNum);
+    }
+
+    protected abstract Map<String, Object> generatedCodeGetMap(int fieldNum) throws ExecException;
+
+    @SuppressWarnings("unchecked")
+    protected Map<String, Object> unboxMap(Object val) {
+        return (Map<String, Object>)val;
     }
 
     protected static Schema staticSchemaGen(String s) {
@@ -975,6 +1079,33 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return compare(isNull, val, themNull, themVal);
     }
 
+    protected int compare(boolean usNull, DateTime usVal, boolean themNull, DateTime themVal) {
+        if (usNull && themNull) {
+            return 0;
+        } else if (themNull) {
+            return 1;
+        } else if (usNull) {
+            return -1;
+        }
+        return compare(usVal, themVal);
+    }
+
+    protected int compare(DateTime val, DateTime themVal) {
+        return val.compareTo(themVal);
+    }
+
+    protected int compareWithElementAtPos(boolean isNull, DateTime val, SchemaTuple<?> t, int pos) {
+        DateTime themVal;
+        boolean themNull;
+        try {
+            themVal = t.getDateTime(pos);
+            themNull = t.isNull(pos);
+        } catch (ExecException e) {
+            throw new RuntimeException("Unable to retrieve String field " + pos + " in given Tuple: " + t, e);
+        }
+        return compare(isNull, val, themNull, themVal);
+    }
+
     protected int compare(boolean usNull, String usVal, boolean themNull, String themVal) {
         if (usNull && themNull) {
             return 0;
@@ -1029,6 +1160,33 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
         return compare(isNull, val, themNull, themVal);
     }
 
+    protected int compare(boolean usNull, Map<String, Object> usVal, boolean themNull, Map<String, Object> themVal) {
+        if (usNull && themNull) {
+            return 0;
+        } else if (themNull) {
+            return 1;
+        } else if (usNull) {
+            return -1;
+        }
+        return compare(usVal, themVal);
+    }
+
+    protected int compare(Map<String, Object> val, Map<String, Object> themVal) {
+        return DataType.compare(val, themVal, DataType.MAP, DataType.MAP);
+    }
+
+    protected int compareWithElementAtPos(boolean isNull, Map<String, Object> val, SchemaTuple<?> t, int pos) {
+        Map<String, Object> themVal;
+        boolean themNull;
+        try {
+            themVal = t.getMap(pos);
+            themNull = t.isNull(pos);
+        } catch (ExecException e) {
+            throw new RuntimeException("Unable to retrieve DataBag field " + pos + " in given Tuple: " + t, e);
+        }
+        return compare(isNull, val, themNull, themVal);
+    }
+
     protected int compareWithElementAtPos(boolean isNull, SchemaTuple<?> val, SchemaTuple<?> t, int pos) {
         Object themVal;
         boolean themNull;
@@ -1062,16 +1220,6 @@ public abstract class SchemaTuple<T extends SchemaTuple<T>> extends AbstractTupl
 
     public static abstract class SchemaTupleQuickGenerator<A> {
         public abstract A make();
-    }
-
-    @NotImplemented
-    public Map<String,Object> getMap(int idx) throws ExecException {
-        throw MethodHelper.methodNotImplemented();
-    }
-
-    @NotImplemented
-    public void setMap(int idx, Map<String,Object> val) throws ExecException {
-        throw MethodHelper.methodNotImplemented();
     }
 
     public int size() {

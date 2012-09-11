@@ -17,8 +17,12 @@
 package org.apache.pig.piggybank.test.storage.avro;
 
 import org.apache.avro.Schema;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.piggybank.storage.avro.AvroStorageUtils;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -33,44 +37,6 @@ public class TestAvroStorageUtils {
     private final String FIELDS_VALUE = " \"fields\": [ { \"name\": \"value\", \"type\":\"int\"}, ";
 
     public final String RECORD_BEGINNING = TYPE_RECORD + NAME_NODE + FIELDS_VALUE;
-
-    @Test
-    public void canIdentifyRecursiveRecords() throws IOException {
-        final String str1 = RECORD_BEGINNING +
-        		                     "{ \"name\": \"next\", \"type\": [\"null\", \"Node\"] } ] }";
-        Schema s = Schema.parse(str1);
-        assertTrue(AvroStorageUtils.containsRecursiveRecord(s));
-
-        final String str2 = "{\"type\": \"array\", \"items\": "  + str1 + "}";
-        s = Schema.parse(str2);
-        assertTrue(AvroStorageUtils.containsRecursiveRecord(s));
-
-        final String str3 ="[\"null\", " + str2 + "]";
-        s = Schema.parse(str3);
-        assertTrue(AvroStorageUtils.containsRecursiveRecord(s));
-        
-    }
-
-    @Test
-    public void canIdentifyNonRecursiveRecords() throws IOException {
-        final String non = RECORD_BEGINNING + "{ \"name\": \"next\", \"type\": [\"null\", \"string\"] } ] }";
-        assertFalse(AvroStorageUtils.containsRecursiveRecord(Schema.parse(non)));
-        
-        final String s1 =
-            "{ \"type\":\"record\", \"name\":\"Event\", " +
-               "\"fields\":[ " +
-                       "{\"name\":\"f1\", " +
-                         "\"type\":{ \"type\":\"record\",\"name\":\"Entity\", " +
-                                          "\"fields\":[{\"name\":\"type\", \"type\": \"string\"}," +
-                                                             "{\"name\":\"value\",\"type\": \"int\"}] " +
-                                         "} }, " +
-                       " {\"name\":\"f2\",\"type\": \"Entity\"}, " +
-                       " {\"name\":\"f3\",\"type\": \"Entity\"} " +
-                       "] }";
-            Schema schema1 = Schema.parse(s1);
-            assertFalse(AvroStorageUtils.containsRecursiveRecord(schema1));
-
-    }
 
      @Test
      public void testGenericUnion() throws IOException {
@@ -122,4 +88,40 @@ public class TestAvroStorageUtils {
         assertNull(realSchema);
     }
 
+    @Test
+    public void testGetConcretePathFromGlob() throws IOException {
+        final String basedir = "file://" + System.getProperty("user.dir");
+        final String tempdir = Long.toString(System.currentTimeMillis());
+        final String nonexistentpath = basedir + "/" + tempdir + "/this_path_does_not_exist";
+
+        Path[] paths = null;
+        Path concretePath = null;
+        Job job = new Job(new Configuration());
+
+        // existent path
+        String locationStr = basedir;
+        concretePath = AvroStorageUtils.getConcretePathFromGlob(locationStr, job);
+        assertEquals(basedir, concretePath.toUri().toString());
+
+        // non-existent path
+        locationStr = nonexistentpath;
+        concretePath = AvroStorageUtils.getConcretePathFromGlob(locationStr, job);
+        assertEquals(null, concretePath);
+
+        // empty glob pattern
+        locationStr = basedir + "/{}";
+        concretePath = AvroStorageUtils.getConcretePathFromGlob(locationStr, job);
+        assertEquals(null, concretePath);
+
+        // bad glob pattern
+        locationStr = basedir + "/{1,";
+        try {
+            concretePath = AvroStorageUtils.getConcretePathFromGlob(locationStr, job);
+            Assert.fail();
+        } catch (IOException e) {
+            // The message of the exception for illegal file pattern is rather long,
+            // so we simply confirm if it contains 'illegal file pattern'.
+            assertTrue(e.getMessage().contains("Illegal file pattern"));
+        }
+    }
 }

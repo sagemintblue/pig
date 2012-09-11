@@ -210,7 +210,7 @@ type : simple_type | tuple_type | bag_type | map_type
 ;
 
 simple_type 
-    : BOOLEAN | INT | LONG | FLOAT | DOUBLE | CHARARRAY | BYTEARRAY 
+    : BOOLEAN | INT | LONG | FLOAT | DOUBLE | DATETIME | CHARARRAY | BYTEARRAY 
 ;
 
 tuple_type 
@@ -238,15 +238,27 @@ func_args
 ;
 
 cube_clause
-  : ^( CUBE cube_item )
+    : ^( CUBE cube_item )
 ;
 
 cube_item
-  : rel ( cube_by_clause )
+    : rel ( cube_by_clause )
 ;
 
 cube_by_clause
-    : ^( BY cube_by_expr+ )
+    : ^( BY cube_or_rollup )
+;
+
+cube_or_rollup
+    : cube_rollup_list+
+;
+
+cube_rollup_list
+    : ^( ( CUBE | ROLLUP ) cube_by_expr_list )
+;
+
+cube_by_expr_list
+    : cube_by_expr+
 ;
 
 cube_by_expr 
@@ -591,6 +603,7 @@ eid : rel_str_op
     | FILTER
     | FOREACH
     | CUBE
+    | ROLLUP
     | MATCHES
     | ORDER
     | DISTINCT
@@ -623,6 +636,7 @@ eid : rel_str_op
     | LONG
     | FLOAT
     | DOUBLE
+    | DATETIME
     | CHARARRAY
     | BYTEARRAY
     | BAG

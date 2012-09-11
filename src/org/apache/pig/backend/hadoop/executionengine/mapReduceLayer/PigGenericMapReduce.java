@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.joda.time.DateTimeZone;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -319,7 +321,7 @@ public class PigGenericMapReduce {
                 if (rp == null)
                     rp = (PhysicalPlan) ObjectSerializer.deserialize(jConf
                             .get("pig.reducePlan"));
-                stores = PlanHelper.getStores(rp);
+                stores = PlanHelper.getPhysicalOperators(rp, POStore.class);
 
                 if (!inIllustrator)
                     pack = (POPackage)ObjectSerializer.deserialize(jConf.get("pig.reduce.package"));
@@ -345,6 +347,12 @@ public class PigGenericMapReduce {
                 throw new RuntimeException(msg, ioe);
             }
             log.info("Aliases being processed per job phase (AliasName[line,offset]): " + jConf.get("pig.alias.location"));
+            
+            String dtzStr = PigMapReduce.sJobConfInternal.get().get("pig.datetime.default.tz");
+            if (dtzStr != null && dtzStr.length() > 0) {
+                // ensure that the internal timezone is uniformly in UTC offset style
+                DateTimeZone.setDefault(DateTimeZone.forOffsetMillis(DateTimeZone.forID(dtzStr).getOffset(null)));
+            }
         }
         
         /**
